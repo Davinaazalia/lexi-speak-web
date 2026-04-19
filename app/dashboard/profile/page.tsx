@@ -1,0 +1,252 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+import UserAddressCard from "@/components/user-profile/UserAddressCard";
+import UserInfoCard from "@/components/user-profile/UserInfoCard";
+import UserMetaCard from "@/components/user-profile/UserMetaCard";
+
+type AppRole = "user" | "guru" | "admin";
+
+type ProfileRow = {
+  email: string | null;
+  role: AppRole | null;
+  created_at: string | null;
+};
+
+type EditableProfile = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  bio: string;
+};
+
+type EditableAddress = {
+  country: string;
+  cityState: string;
+  postalCode: string;
+  taxId: string;
+};
+
+const splitDisplayName = (fullName: string) => {
+  const trimmedName = fullName.trim();
+
+  if (!trimmedName) {
+    return { firstName: "User", lastName: "" };
+  }
+
+  const parts = trimmedName.split(/\s+/);
+
+  return {
+    firstName: parts[0] ?? "User",
+    lastName: parts.slice(1).join(" ") || "",
+  };
+};
+
+const roleLabel = (role: AppRole | null | undefined) => {
+  if (role === "admin") return "Admin";
+  if (role === "guru") return "Coach";
+  return "Student";
+};
+
+const getDisplayName = (user: {
+  user_metadata?: {
+    full_name?: string;
+    name?: string;
+    first_name?: string;
+    last_name?: string;
+  };
+  email?: string | null;
+}) => {
+  const metadataName =
+    user.user_metadata?.full_name ??
+    user.user_metadata?.name ??
+    [user.user_metadata?.first_name, user.user_metadata?.last_name]
+      .filter(Boolean)
+      .join(" ");
+
+  return metadataName || user.email?.split("@")[0] || "User";
+};
+
+export default function ProfilePage() {
+  const router = useRouter();
+  const [profile, setProfile] = useState<ProfileRow | null>(null);
+  const [displayName, setDisplayName] = useState("User");
+  const [editableProfile, setEditableProfile] = useState<EditableProfile>({
+    firstName: "User",
+    lastName: "",
+    email: "-",
+    phone: "-",
+    bio: "-",
+  });
+  const [editableAddress, setEditableAddress] = useState<EditableAddress>({
+    country: "-",
+    cityState: "-",
+    postalCode: "-",
+    taxId: "-",
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        router.replace("/login");
+        return;
+      }
+
+      const resolvedDisplayName = getDisplayName(user);
+      setDisplayName(resolvedDisplayName);
+
+      const parsedName = splitDisplayName(resolvedDisplayName);
+      const metadataPhone =
+        typeof user.user_metadata?.phone === "string" && user.user_metadata.phone.trim()
+          ? user.user_metadata.phone
+          : "-";
+      const metadataBio =
+        typeof user.user_metadata?.bio === "string" && user.user_metadata.bio.trim()
+          ? user.user_metadata.bio
+          : "-";
+      const metadataCountry =
+        typeof user.user_metadata?.country === "string" && user.user_metadata.country.trim()
+          ? user.user_metadata.country
+          : "-";
+      const metadataCityState =
+        typeof user.user_metadata?.city_state === "string" && user.user_metadata.city_state.trim()
+          ? user.user_metadata.city_state
+          : "-";
+      const metadataPostalCode =
+        typeof user.user_metadata?.postal_code === "string" && user.user_metadata.postal_code.trim()
+          ? user.user_metadata.postal_code
+          : "-";
+      const metadataTaxId =
+        typeof user.user_metadata?.tax_id === "string" && user.user_metadata.tax_id.trim()
+          ? user.user_metadata.tax_id
+          : "-";
+
+      setEditableProfile({
+        firstName: parsedName.firstName,
+        lastName: parsedName.lastName,
+        email: user.email ?? "-",
+        phone: metadataPhone,
+        bio: metadataBio,
+      });
+
+      setEditableAddress({
+        country: metadataCountry,
+        cityState: metadataCityState,
+        postalCode: metadataPostalCode,
+        taxId: metadataTaxId,
+      });
+
+      const { data } = await supabase
+        .from("profiles")
+        .select("email, role, created_at")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      setProfile((data as ProfileRow | null) ?? null);
+
+      setLoading(false);
+    };
+
+    void load();
+  }, [router]);
+
+  const handleSaveUserInfo = async (values: EditableProfile) => {
+    const trimmedFirstName = values.firstName.trim();
+    const trimmedLastName = values.lastName.trim();
+    const fullName = [trimmedFirstName, trimmedLastName].filter(Boolean).join(" ").trim();
+
+    const { error } = await supabase.auth.updateUser({
+      data: {
+        first_name: trimmedFirstName,
+        last_name: trimmedLastName,
+        full_name: fullName,
+        name: fullName || trimmedFirstName,
+        phone: values.phone.trim() || "-",
+        bio: values.bio.trim() || "-",
+      },
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    setDisplayName(fullName || trimmedFirstName || "User");
+    setEditableProfile({
+      firstName: trimmedFirstName || "User",
+      lastName: trimmedLastName,
+      email: values.email,
+      phone: values.phone.trim() || "-",
+      bio: values.bio.trim() || "-",
+    });
+  };
+
+  const handleSaveAddress = async (values: EditableAddress) => {
+    const nextAddress: EditableAddress = {
+      country: values.country.trim() || "-",
+      cityState: values.cityState.trim() || "-",
+      postalCode: values.postalCode.trim() || "-",
+      taxId: values.taxId.trim() || "-",
+    };
+
+    const { error } = await supabase.auth.updateUser({
+      data: {
+        country: nextAddress.country,
+        city_state: nextAddress.cityState,
+        postal_code: nextAddress.postalCode,
+        tax_id: nextAddress.taxId,
+      },
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    setEditableAddress(nextAddress);
+  };
+
+  if (loading) {
+    return (
+      <section className="space-y-6">
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
+          <p className="text-sm text-gray-500 dark:text-gray-400">Loading profile...</p>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] lg:p-6">
+      <h3 className="mb-5 text-lg font-semibold text-gray-800 dark:text-white/90 lg:mb-7">Profile</h3>
+      <div className="space-y-6">
+        <UserMetaCard
+          name={displayName}
+          roleLabel={roleLabel(profile?.role)}
+          location="-"
+        />
+        <UserInfoCard
+          firstName={editableProfile.firstName}
+          lastName={editableProfile.lastName}
+          email={editableProfile.email || profile?.email || "-"}
+          phone={editableProfile.phone}
+          bio={editableProfile.bio}
+          onSave={handleSaveUserInfo}
+        />
+        <UserAddressCard
+          country={editableAddress.country}
+          cityState={editableAddress.cityState}
+          postalCode={editableAddress.postalCode}
+          taxId={editableAddress.taxId}
+          onSave={handleSaveAddress}
+        />
+      </div>
+    </div>
+  );
+}

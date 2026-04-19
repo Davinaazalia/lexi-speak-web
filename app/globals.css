@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@plugin "@iconify/tailwind4";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -35,6 +36,7 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  --color-tertiary: var(--tertiary);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -55,14 +57,15 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.514 0.222 16.935);
-  --primary-foreground: oklch(0.969 0.015 12.422);
-  --secondary: oklch(0.967 0.001 286.375);
-  --secondary-foreground: oklch(0.21 0.006 285.885);
-  --muted: oklch(0.97 0 0);
+  --primary: #c95b5b;
+  --primary-foreground: #ffffff;
+  --secondary: #ffc5c4;
+  --secondary-foreground: #6f2f2f;
+  --tertiary: #ffeeee;
+  --muted: #ffeeee;
   --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.514 0.222 16.935);
-  --accent-foreground: oklch(0.969 0.015 12.422);
+  --accent: #c95b5b;
+  --accent-foreground: #ffffff;
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
@@ -90,14 +93,15 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.455 0.188 13.697);
-  --primary-foreground: oklch(0.969 0.015 12.422);
-  --secondary: oklch(0.274 0.006 286.033);
-  --secondary-foreground: oklch(0.985 0 0);
+  --primary: #c95b5b;
+  --primary-foreground: #ffffff;
+  --secondary: #ffc5c4;
+  --secondary-foreground: #6f2f2f;
+  --tertiary: #ffeeee;
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.455 0.188 13.697);
-  --accent-foreground: oklch(0.969 0.015 12.422);
+  --accent: #c95b5b;
+  --accent-foreground: #ffffff;
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
@@ -127,4 +131,99 @@
   html {
     @apply font-sans;
   }
+
+  input[type="password"]::-ms-reveal,
+  input[type="password"]::-ms-clear {
+    display: none;
+  }
+
+  input[type="password"]::-webkit-credentials-auto-fill-button {
+    visibility: hidden;
+    pointer-events: none;
+    position: absolute;
+    right: 0;
+  }
+}
+
+@keyframes rotate-glow {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+.rainbow-red {
+  position: relative;
+  isolation: isolate;
+}
+
+.rainbow-red::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: -50%;
+  top: -50%;
+  width: 200%;
+  height: 100%;
+  background-position: 100% 50%;
+  background-repeat: no-repeat;
+  background-size: 50% 30%;
+  filter: blur(8px);
+  background-image: linear-gradient(
+    120deg,
+    var(--secondary),
+    var(--primary),
+    var(--tertiary),
+    var(--primary),
+    var(--secondary)
+  );
+  animation: rotate-glow 4s linear infinite;
+}
+
+.brand-pill-button {
+  border-radius: 16px;
+  background: var(--primary);
+  background-image: linear-gradient(
+    160deg,
+    #f2a7a6 0%,
+    #df7d7b 45%,
+    var(--primary) 72%,
+    #b74f4f 100%
+  );
+  box-shadow:
+    0 9px 22px rgba(201, 91, 91, 0.28),
+    0 2px 6px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  transition: transform 220ms ease, filter 220ms ease, box-shadow 220ms ease;
+}
+
+.brand-pill-button:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+}
+
+.brand-pill-button:active {
+  transform: translateY(0);
+  filter: brightness(0.98);
+}
+
+.auth-secondary-button {
+  border-radius: 16px;
+  border: 1px solid color-mix(in oklab, var(--primary) 28%, white);
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--tertiary) 72%, white) 0%,
+    color-mix(in oklab, var(--tertiary) 92%, white) 100%
+  );
+  color: color-mix(in oklab, var(--secondary-foreground) 78%, #3d1a1a);
+  transition: transform 180ms ease, filter 180ms ease, border-color 180ms ease;
+}
+
+.auth-secondary-button:hover {
+  transform: translateY(-1px);
+  filter: brightness(0.99);
+  border-color: color-mix(in oklab, var(--primary) 38%, white);
+}
+
+.auth-secondary-button:active {
+  transform: translateY(0);
 }
