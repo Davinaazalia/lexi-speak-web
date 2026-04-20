@@ -770,20 +770,69 @@ export default function Home() {
     if (!user) return;
 
     const progressPercent = 100 / 3;
-
-    const { error } = await supabase.rpc("record_student_practice_progress", {
+    const lastActivityAt = new Date().toISOString();
+    const rpcPayload = {
       latest_score: analysis.overallScore,
       progress_percent: progressPercent,
       speaking_attempts: partIndex,
-      last_activity_at: new Date().toISOString(),
+      last_activity_at: lastActivityAt,
       last_unit_index: requestedUnit,
       last_part_index: partIndex,
       notes: analysis.summary,
-    });
+    };
 
-    if (error) {
-      setSpeechError(error.message);
+    const { error: rpcError } = await supabase.rpc("record_student_practice_progress", rpcPayload);
+
+    if (!rpcError) return;
+
+    const functionMissing =
+      rpcError.code === "PGRST202" ||
+      /Could not find the function\s+public\.record_student_practice_progress/i.test(rpcError.message);
+
+    if (!functionMissing) {
+      setSpeechError(rpcError.message);
+      return;
     }
+
+    const { error: upsertError } = await supabase.from("student_progress").upsert(
+      {
+        student_id: user.id,
+        latest_score: analysis.overallScore,
+        progress_percent: progressPercent,
+        speaking_attempts: partIndex,
+        last_activity_at: lastActivityAt,
+        last_unit_index: requestedUnit,
+        last_part_index: partIndex,
+        notes: analysis.summary,
+      },
+      { onConflict: "student_id" },
+    );
+
+    if (!upsertError) return;
+
+    const unitPartColumnsMissing =
+      /last_unit_index|last_part_index/i.test(upsertError.message) ||
+      upsertError.code === "42703";
+
+    if (unitPartColumnsMissing) {
+      const { error: legacyUpsertError } = await supabase.from("student_progress").upsert(
+        {
+          student_id: user.id,
+          latest_score: analysis.overallScore,
+          progress_percent: progressPercent,
+          speaking_attempts: partIndex,
+          last_activity_at: lastActivityAt,
+          notes: analysis.summary,
+        },
+        { onConflict: "student_id" },
+      );
+
+      if (!legacyUpsertError) return;
+      setSpeechError(legacyUpsertError.message);
+      return;
+    }
+
+    setSpeechError(upsertError.message);
   };
 
   const speakingCards = useMemo<SpeakingCard[]>(() => {
