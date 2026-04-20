@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState,useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
 import { supabase } from "@/lib/supabase";
 import {
@@ -29,10 +29,17 @@ const baseNavItems: NavItem[] = [
   {
     icon: <GridIcon />,
     name: "Dashboard",
-    subItems: [
-      { name: "Overview", path: "/dashboard/user", pro: false },
-      { name: "Coach Panel", path: "/dashboard/coach", pro: false },
-    ],
+    subItems: [{ name: "Overview", path: "/dashboard/user", pro: false }],
+  },
+  {
+    icon: <ListIcon />,
+    name: "Learn",
+    path: "/dashboard/user?tab=learn",
+  },
+  {
+    icon: <TableIcon />,
+    name: "Test",
+    path: "/dashboard/user?tab=test",
   },
   {
     icon: <UserCircleIcon />,
@@ -96,6 +103,7 @@ const AppSidebar: React.FC = () => {
   const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
   const pathname = usePathname();
   const [role, setRole] = useState<AppRole>("user");
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     const loadRole = async () => {
@@ -124,14 +132,15 @@ const AppSidebar: React.FC = () => {
     void loadRole();
   }, []);
 
-  const navItems = role === "admin" ? adminNavItems : role === "guru" ? coachNavItems : baseNavItems;
+  const currentPath = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
 
+  const navItems = role === "admin" ? adminNavItems : role === "guru" ? coachNavItems : baseNavItems;
   const renderMenuItems = (
-    navItems: NavItem[],
+    items: NavItem[],
     menuType: "main" | "others"
   ) => (
     <ul className="flex flex-col gap-4">
-      {navItems.map((nav, index) => (
+      {items.map((nav, index) => (
         <li key={nav.name}>
           {nav.subItems ? (
             <button

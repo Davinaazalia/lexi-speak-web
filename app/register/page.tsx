@@ -178,9 +178,10 @@ export default function RegisterPage() {
                 value={role}
                 onChange={(e) => setRole(e.target.value as AppRole)}
               >
-                <option value="user">User</option>
+                <option value="user">Student</option>
                 <option value="guru">Coach</option>
               </select>
+              <p className="text-xs text-slate-500">Student accounts use the default user role.</p>
             </div>
 
             <div className="space-y-1.5">

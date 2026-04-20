@@ -234,7 +234,7 @@ export default function AdminDashboardPage() {
         <div className="border-b border-gray-100 px-5 py-4 dark:border-gray-800">
           <h2 className="text-base font-semibold text-gray-800 dark:text-white/90">All Roles Maintenance</h2>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Search account by email/role, change role, and browse all users with pagination.
+            Search account by email/role, change role, and manage test-time coach links with pagination.
           </p>
         </div>
 
@@ -269,7 +269,7 @@ export default function AdminDashboardPage() {
                 <tr className="border-b border-gray-100 dark:border-gray-800">
                   <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Email</th>
                   <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Role</th>
-                  <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Assigned Coach</th>
+                  <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Test Coach</th>
                   <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Created</th>
                 </tr>
               </thead>
@@ -308,7 +308,7 @@ export default function AdminDashboardPage() {
                             }
                             className="w-52 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 outline-none transition focus:border-brand-300 focus:ring-2 focus:ring-brand-500/20 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
                           >
-                            <option value="">Unassigned</option>
+                            <option value="">No test coach</option>
                             {coaches.map((coach) => (
                               <option key={coach.id} value={coach.id}>
                                 {coach.email}

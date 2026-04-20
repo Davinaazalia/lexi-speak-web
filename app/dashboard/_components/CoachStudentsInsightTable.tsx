@@ -62,6 +62,8 @@ export default function CoachStudentsInsightTable() {
   const [pageSize, setPageSize] = useState<5 | 10>(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [detailStudent, setDetailStudent] = useState<StudentInsight | null>(null);
+  const [coachNote, setCoachNote] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -174,6 +176,41 @@ export default function CoachStudentsInsightTable() {
   useEffect(() => {
     if (currentPage > pageCount) setCurrentPage(pageCount);
   }, [currentPage, pageCount]);
+
+  useEffect(() => {
+    setCoachNote(detailStudent?.notes ?? "");
+  }, [detailStudent]);
+
+  const handleSaveCoachNote = async () => {
+    if (!detailStudent) return;
+
+    setSavingNote(true);
+    setNotice("");
+
+    const { error } = await supabase
+      .from("student_progress")
+      .upsert(
+        {
+          student_id: detailStudent.id,
+          notes: coachNote,
+          last_activity_at: detailStudent.last_activity_at ?? new Date().toISOString(),
+        },
+        { onConflict: "student_id" }
+      );
+
+    if (error) {
+      setNotice(error.message);
+      setSavingNote(false);
+      return;
+    }
+
+    setStudents((prev) =>
+      prev.map((row) => (row.id === detailStudent.id ? { ...row, notes: coachNote } : row))
+    );
+    setDetailStudent((prev) => (prev ? { ...prev, notes: coachNote } : prev));
+    setSavingNote(false);
+    setNotice("Coach feedback saved.");
+  };
 
   return (
     <section className="space-y-6">
@@ -351,6 +388,22 @@ export default function CoachStudentsInsightTable() {
           <div className="mt-4">
             <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">Notes</p>
             <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">{detailStudent.notes ?? "No notes yet."}</p>
+            <textarea
+              value={coachNote}
+              onChange={(event) => setCoachNote(event.target.value)}
+              placeholder="Write coach feedback for this student..."
+              className="mt-3 min-h-28 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 outline-none transition focus:border-brand-300 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+            />
+            <div className="mt-3 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleSaveCoachNote}
+                disabled={savingNote}
+                className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {savingNote ? "Saving..." : "Save Coach Feedback"}
+              </button>
+            </div>
           </div>
         </div>
       ) : null}

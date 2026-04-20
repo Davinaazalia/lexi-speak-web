@@ -23,6 +23,8 @@ create table if not exists public.student_progress (
   progress_percent numeric(5,2) check (progress_percent is null or (progress_percent >= 0 and progress_percent <= 100)),
   speaking_attempts integer not null default 0 check (speaking_attempts >= 0),
   last_activity_at timestamptz,
+  last_unit_index integer,
+  last_part_index integer,
   notes text,
   updated_at timestamptz not null default now(),
   updated_by uuid references public.profiles(id) on delete set null
@@ -34,12 +36,20 @@ alter table public.student_progress
 alter table public.student_progress
   add column if not exists last_activity_at timestamptz;
 
+alter table public.student_progress
+  add column if not exists last_unit_index integer;
+
+alter table public.student_progress
+  add column if not exists last_part_index integer;
+
 -- 2d) Student score history (for trend charts)
 create table if not exists public.student_score_history (
   id bigint generated always as identity primary key,
   student_id uuid not null references public.profiles(id) on delete cascade,
   score numeric(5,2) not null check (score >= 0 and score <= 100),
   speaking_attempts integer not null default 1 check (speaking_attempts >= 0),
+  unit_index integer,
+  part_index integer,
   recorded_at timestamptz not null default now(),
   recorded_by uuid references public.profiles(id) on delete set null
 );
@@ -57,6 +67,8 @@ begin
       student_id,
       score,
       speaking_attempts,
+      unit_index,
+      part_index,
       recorded_at,
       recorded_by
     )
@@ -64,6 +76,8 @@ begin
       new.student_id,
       new.latest_score,
       coalesce(new.speaking_attempts, 0),
+      new.last_unit_index,
+      new.last_part_index,
       coalesce(new.last_activity_at, new.updated_at, now()),
       new.updated_by
     );
@@ -80,6 +94,68 @@ for each row
 execute procedure public.log_student_progress_history();
 
 create index if not exists student_progress_updated_at_idx on public.student_progress(updated_at desc);
+
+create or replace function public.record_student_practice_progress(
+  latest_score numeric,
+  progress_percent numeric,
+  speaking_attempts integer,
+  last_activity_at timestamptz,
+  last_unit_index integer,
+  last_part_index integer,
+  notes text
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not exists (
+    select 1
+    from public.profiles p
+    where p.id = auth.uid()
+      and p.role = 'user'
+  ) then
+    raise exception 'only student accounts can record practice progress';
+  end if;
+
+  insert into public.student_progress (
+    student_id,
+    latest_score,
+    progress_percent,
+    speaking_attempts,
+    last_activity_at,
+    last_unit_index,
+    last_part_index,
+    notes,
+    updated_at,
+    updated_by
+  )
+  values (
+    auth.uid(),
+    latest_score,
+    progress_percent,
+    coalesce(speaking_attempts, 0),
+    coalesce(last_activity_at, now()),
+    last_unit_index,
+    last_part_index,
+    notes,
+    now(),
+    auth.uid()
+  )
+  on conflict (student_id) do update
+  set
+    latest_score = excluded.latest_score,
+    progress_percent = excluded.progress_percent,
+    speaking_attempts = excluded.speaking_attempts,
+    last_activity_at = excluded.last_activity_at,
+    last_unit_index = excluded.last_unit_index,
+    last_part_index = excluded.last_part_index,
+    notes = excluded.notes,
+    updated_at = excluded.updated_at,
+    updated_by = excluded.updated_by;
+end;
+$$;
 
 create or replace function public.is_assigned_coach(student uuid)
 returns boolean
@@ -199,6 +275,13 @@ using (
   or (role = 'user' and coach_id = auth.uid())
 );
 
+-- Allow authenticated users to view coach accounts for pairing during test start.
+create policy "profiles_select_guru_directory"
+on public.profiles
+for select
+to authenticated
+using (role = 'guru');
+
 -- Insert: authenticated user can create own row
 create policy "profiles_insert_own"
 on public.profiles
@@ -223,6 +306,43 @@ on public.profiles
 for delete
 to authenticated
 using (public.is_admin());
+
+-- Allow a student to connect or disconnect a coach only when they are about to start a test.
+create or replace function public.assign_student_coach(coach uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not exists (
+    select 1
+    from public.profiles p
+    where p.id = auth.uid()
+      and p.role = 'user'
+  ) then
+    raise exception 'only student accounts can change their test coach';
+  end if;
+
+  if coach is not null and not exists (
+    select 1
+    from public.profiles p
+    where p.id = coach
+      and p.role = 'guru'
+  ) then
+    raise exception 'selected coach must be a valid guru account';
+  end if;
+
+  update public.profiles
+  set coach_id = coach
+  where id = auth.uid()
+    and role = 'user';
+
+  if not found then
+    raise exception 'student profile not found';
+  end if;
+end;
+$$;
 
 -- 5b) RLS policies for student progress
 alter table public.student_progress enable row level security;
@@ -314,3 +434,26 @@ using (public.is_admin());
 -- update public.profiles
 -- set role = 'admin'
 -- where email = 'your-email@example.com';
+
+-- 7) Reset student auth/profile for vinatara27@gmail.com
+-- Run this in Supabase SQL Editor if the student account exists but login still fails.
+-- This keeps Auth and profiles aligned on the same email and forces the role to student.
+do $$
+begin
+  update auth.users
+  set
+    email = 'vinatara27@gmail.com',
+    email_confirmed_at = coalesce(email_confirmed_at, now())
+  where email = 'vinatara27@gmail.com';
+
+  update public.profiles
+  set
+    email = 'vinatara27@gmail.com',
+    role = 'user'
+  where email = 'vinatara27@gmail.com';
+end
+$$;
+
+-- If the auth account still cannot sign in after this,
+-- reset the password from Supabase Auth dashboard or re-create the auth user,
+-- because SQL cannot safely guess the correct password hash.

@@ -6,11 +6,37 @@ import { AlertCircleIcon, CheckCircle2Icon, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
+type AppRole = "user" | "guru" | "admin";
+
 type Notice = {
   kind: "success" | "error";
   title: string;
   description: string;
 } | null;
+
+const mapLoginErrorMessage = (rawMessage: string) => {
+  const normalized = rawMessage.toLowerCase();
+
+  if (normalized.includes("invalid login credentials")) {
+    return [
+      "Email atau password tidak cocok.",
+      "Jika email hanya diubah dari panel admin/profiles, akun auth belum ikut berubah.",
+      "Pastikan akun coach benar-benar dibuat lewat Sign Up (atau diundang via Supabase Auth), lalu login pakai email auth tersebut.",
+    ].join(" ");
+  }
+
+  if (normalized.includes("email not confirmed")) {
+    return "Email belum terverifikasi. Buka email verifikasi dulu, lalu coba login lagi.";
+  }
+
+  return rawMessage;
+};
+
+const getDashboardPathForRole = (role: AppRole) => {
+  if (role === "admin") return "/dashboard/admin";
+  if (role === "guru") return "/dashboard/coach";
+  return "/dashboard/user";
+};
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -46,7 +72,7 @@ export default function LoginPage() {
       setNotice({
         kind: "error",
         title: "Login failed",
-        description: error.message,
+        description: mapLoginErrorMessage(error.message),
       });
       return;
     }
@@ -54,11 +80,21 @@ export default function LoginPage() {
     setNotice({
       kind: "success",
       title: "Login successful",
-      description: "You will be redirected to the dashboard.",
+      description: "You will be redirected to your dashboard now.",
     });
 
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const { data: profile } = user
+      ? await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle()
+      : { data: null };
+
+    const role = (profile?.role as AppRole | undefined) ?? (user?.user_metadata?.role as AppRole | undefined) ?? "user";
+
     setTimeout(() => {
-      window.location.href = "/dashboard";
+      window.location.href = getDashboardPathForRole(role);
     }, 900);
   };
 
