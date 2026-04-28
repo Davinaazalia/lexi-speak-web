@@ -4,9 +4,38 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import TextButton from "@/components/ui/system/TextButton";
+import { InputField } from "@/components/ui/system/InputField";
+import { Toggle } from "@/components/ui/system/Toggle";
+import {
+    NumberCircleOneIcon,
+    NumberCircleTwoIcon,
+    NumberCircleThreeIcon,
+    NumberCircleFourIcon,
+    NumberCircleFiveIcon,
+    NumberCircleSixIcon,
+    NumberCircleSevenIcon,
+    NumberCircleEightIcon,
+    NumberCircleNineIcon,
+    PencilLineIcon,
+    TrashIcon,
+} from "@phosphor-icons/react";
+import { title } from "process";
+
+const numberIcons = [
+    NumberCircleOneIcon,
+    NumberCircleTwoIcon,
+    NumberCircleThreeIcon,
+    NumberCircleFourIcon,
+    NumberCircleFiveIcon,
+    NumberCircleSixIcon,
+    NumberCircleSevenIcon,
+    NumberCircleEightIcon,
+    NumberCircleNineIcon,
+];
 
 type Question = {
     id: string;
+    title: string;
     part: number;
     prompt: string | null;
     is_active: boolean;
@@ -21,14 +50,14 @@ type Detail = {
 };
 
 type QuestionBankProps = {
-    title: string;
+    pageTitle: string;
     description: string;
     emptyLabel: string;
     summaryLabel: string;
 };
 
 export default function QuestionBank({
-    title,
+    pageTitle,
     description,
     emptyLabel,
     summaryLabel,
@@ -43,10 +72,13 @@ export default function QuestionBank({
     const [currentPage, setCurrentPage] = useState(1);
 
     const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
+    const selectedTopic = rows.find((r) => r.id === selectedTopicId);
+
     const [details, setDetails] = useState<any[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const [editTopic, setEditTopic] = useState<Question | null>(null);
+    const [editTitle, setEditTitle] = useState("");
     const [editPrompt, setEditPrompt] = useState("");
     const [editPart, setEditPart] = useState<number>(1);
     const [editActive, setEditActive] = useState(true);
@@ -93,7 +125,7 @@ export default function QuestionBank({
 
             const { data, error } = await supabase
                 .from("topics")
-                .select("id, part, prompt, is_active, created_at")
+                .select("id, part, title, prompt, is_active, created_at")
                 .order("created_at", { ascending: false });
 
             if (error) {
@@ -149,7 +181,7 @@ export default function QuestionBank({
     return (
         <section className="space-y-6">
             <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
-                <h1 className="text-xl font-semibold text-gray-800 dark:text-white/90">{title}</h1>
+                <h1 className="text-xl font-semibold text-gray-800 dark:text-white/90">{pageTitle}</h1>
                 <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{description}</p>
                 {notice ? <p className="mt-3 text-sm text-error-600">{notice}</p> : null}
             </div>
@@ -217,6 +249,7 @@ export default function QuestionBank({
                             <thead>
                                 <tr className="border-b border-gray-100 dark:border-gray-800">
                                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500">Part</th>
+                                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-500">Title</th>
                                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500">Prompt</th>
                                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500">Status</th>
                                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500">Created</th>
@@ -253,6 +286,10 @@ export default function QuestionBank({
                                             </td>
 
                                             <td className="px-5 py-4 text-sm">
+                                                {row.title || "-"}
+                                            </td>
+
+                                            <td className="px-5 py-4 text-sm">
                                                 {row.prompt || "-"}
                                             </td>
 
@@ -272,6 +309,7 @@ export default function QuestionBank({
                                                         e.stopPropagation();
 
                                                         setEditTopic(row);
+                                                        setEditTitle(row.title);
                                                         setEditPrompt(row.prompt || "");
                                                         setEditPart(row.part);
                                                         setEditActive(row.is_active);
@@ -284,9 +322,9 @@ export default function QuestionBank({
 
                                                         setEditDetails(data || []);
                                                     }}
-                                                    className="text-blue-500 hover:underline"
+                                                    className="text-[var(--color-warning-text)] hover:text-[var(--color-warning-bg)]"
                                                 >
-                                                    Edit
+                                                    <PencilLineIcon size={18} weight="fill" />
                                                 </button>
 
                                                 {/* DELETE */}
@@ -308,9 +346,9 @@ export default function QuestionBank({
                                                             alert(error.message);
                                                         }
                                                     }}
-                                                    className="text-red-500 hover:underline"
+                                                    className="text-[var(--color-error-text)] hover:text-[var(--color-error-bg)]"
                                                 >
-                                                    Delete
+                                                    <TrashIcon size={18} weight="fill"/>
                                                 </button>
                                             </td>
                                         </tr>
@@ -374,40 +412,105 @@ export default function QuestionBank({
                         {/* HEADER */}
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-lg font-semibold">Topic Details</h3>
-                            <button
-                                onClick={() => {
-                                    setIsModalOpen(false);
-                                    setSelectedTopicId(null);
-                                    setDetails([]);
-                                }}
-                                className="text-gray-500 hover:text-black"
-                            >
-                                ✕
-                            </button>
                         </div>
 
                         {/* CONTENT */}
-                        {details.length === 0 ? (
-                            <p className="text-sm text-gray-500">No details</p>
+                        {!selectedTopic ? (
+                            <p className="w-fit text-sm text-gray-500">Loading...</p>
                         ) : (
-                            <ul className="space-y-2 max-h-[300px] overflow-y-auto">
-                                {details.map((d) => (
-                                    <li key={d.id} className="text-sm">
-                                        <span className="font-semibold capitalize">{d.type}:</span>{" "}
-                                        {d.content}
-                                    </li>
-                                ))}
-                            </ul>
+                            <div className="flex flex-col gap-5 max-h-[600px] overflow-y-auto pr-2">
+
+                                {/* TOPIC */}
+                                <div className="flex flex-col gap-2">
+                                    <span className="text-xs uppercase text-gray-400">
+                                        Part {selectedTopic.part}
+                                    </span>
+
+                                    <h2 className="text-black text-2xl font-semibold leading-snug">
+                                        {selectedTopic.title || "Untitled"}
+                                    </h2>
+
+                                    {selectedTopic.prompt && (
+                                        <p className="text-sm text-gray-500">
+                                            {selectedTopic.prompt}
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* LABEL */}
+                                <div className="flex flex-col gap-1">
+                                    <span className="text-primary text-sm font-bold">
+                                        Question Details
+                                    </span>
+
+                                    {/* DETAILS */}
+                                    {details.length === 0 ? (
+                                        <p className="text-sm text-gray-500">No details</p>
+                                    ) : (
+                                        <div className="flex flex-col gap-1">
+                                            {details.map((d, index) => {
+                                                const Icon = numberIcons[index];
+
+                                                return (
+                                                    <div
+                                                        key={d.id}
+                                                        className="w-full p-3 bg-[var(--color-tertiary)] rounded-2xl border border-1 border-[var(--color-primary)] flex items-center gap-2"
+                                                    >
+                                                        {Icon ? (
+                                                            <Icon size={20} weight="regular" className="text-primary" />
+                                                        ) : (
+                                                            <div className="w-5 h-5 flex items-center justify-center text-xs font-bold text-primary">
+                                                                {index + 1}
+                                                            </div>
+                                                        )}
+
+                                                        <span className="text-[var(--color-primary)] text-sm font-medium">
+                                                            {d.content}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
                         )}
 
                         {/* FOOTER */}
-                        <div className="mt-6 text-right">
-                            <button
+                        <div className="mt-6 flex justify-end gap-2">
+                            <TextButton
+                                variant="secondary"
+                                onClick={async () => {
+                                    if (!selectedTopic) return;
+
+                                    // 🔥 close view modal
+                                    setIsModalOpen(false);
+
+                                    // 🔥 open edit modal
+                                    setEditTopic(selectedTopic);
+                                    setEditTitle(selectedTopic.title);
+                                    setEditPrompt(selectedTopic.prompt || "");
+                                    setEditPart(selectedTopic.part);
+                                    setEditActive(selectedTopic.is_active);
+
+                                    // 🔥 fetch details
+                                    const { data } = await supabase
+                                        .from("topic_details")
+                                        .select("*")
+                                        .eq("topic_id", selectedTopic.id)
+                                        .order("order_index");
+
+                                    setEditDetails(data || []);
+                                }}
+                            >
+                                Edit
+                            </TextButton>
+                            <TextButton
+                                variant="secondary"
                                 onClick={() => setIsModalOpen(false)}
-                                className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300"
                             >
                                 Close
-                            </button>
+                            </TextButton>
                         </div>
                     </div>
                 </div>
@@ -419,33 +522,50 @@ export default function QuestionBank({
                         <h3 className="text-lg font-semibold mb-4">Edit Topic</h3>
 
                         {/* PART */}
-                        <select
-                            value={editPart}
-                            onChange={(e) => setEditPart(Number(e.target.value))}
-                            className="w-full mb-3 border p-2 rounded"
-                        >
-                            <option value={1}>Part 1</option>
-                            <option value={2}>Part 2</option>
-                            <option value={3}>Part 3</option>
-                        </select>
+                        <div className="w-full p-3 mb-3 text-primary outline-dashed outline-[var(--primary)] rounded-2xl">
+                            <select
+                                value={editPart}
+                                onChange={(e) => setEditPart(Number(e.target.value))}
+                                className="w-full outline-none bg-transparent"
+                            >
+                                <option value={1}>Part 1</option>
+                                <option value={2}>Part 2</option>
+                                <option value={3}>Part 3</option>
+                            </select>
+                        </div>
+
+                        {/* TITLE */}
+                        <label htmlFor="editTitle" className="w-full block text-base font-bold text-primary">
+                            Title
+                            <InputField
+                                className="flex-1 min-w-0 mt-2 my-3"
+                                value={editTitle}
+                                onChange={(v) => setEditTitle(v)}
+                                placeholder="Title"
+                            />
+                        </label>
 
                         {/* PROMPT */}
-                        <input
-                            value={editPrompt}
-                            onChange={(e) => setEditPrompt(e.target.value)}
-                            className="w-full mb-3 border p-2 rounded"
-                            placeholder="Prompt"
-                        />
+                        <label htmlFor="editPrompt" className="w-full block text-base font-bold text-primary">
+                            Prompt
+                            <InputField
+                                className="flex-1 min-w-0 mt-2 my-3"
+                                value={editPrompt}
+                                onChange={(v) => setEditPrompt(v)}
+                                placeholder="Prompt"
+                            />
+                        </label>
 
                         {/* ACTIVE */}
-                        <label className="flex items-center gap-2 mb-4">
-                            <input
-                                type="checkbox"
+                        <div className="flex items-center justify-between mb-4">
+                            <span className="text-sm font-medium">Activate topic</span>
+
+                            <Toggle
                                 checked={editActive}
-                                onChange={(e) => setEditActive(e.target.checked)}
+                                onChange={(v) => setEditActive(v)}
                             />
-                            Active
-                        </label>
+                        </div>
+
 
                         {/* DETAILS */}
                         <div className="space-y-2 mb-4">
@@ -453,28 +573,30 @@ export default function QuestionBank({
                                 <div key={d.id ?? i} className="flex gap-2">
 
                                     {/* TYPE */}
-                                    <select
-                                        value={d.type}
-                                        onChange={(e) => {
-                                            const updated = [...editDetails];
-                                            updated[i].type = e.target.value as any;
-                                            setEditDetails(updated);
-                                        }}
-                                        className="border p-2 rounded"
-                                    >
-                                        <option value="question">Question</option>
-                                        <option value="bullet">Bullet</option>
-                                    </select>
+                                    <div className="mx-auto p-3 text-primary outline-dashed outline-[var(--primary)] rounded-2xl flex items-center">
+                                        <select
+                                            value={d.type}
+                                            onChange={(e) => {
+                                                const updated = [...editDetails];
+                                                updated[i].type = e.target.value as any;
+                                                setEditDetails(updated);
+                                            }}
+                                            className="bg-transparent outline-none w-full"
+                                        >
+                                            <option value="question">Question</option>
+                                            <option value="bullet">Bullet</option>
+                                        </select>
+                                    </div>
 
                                     {/* CONTENT */}
-                                    <input
+                                    <InputField
+                                        className="flex-1"
                                         value={d.content}
-                                        onChange={(e) => {
+                                        onChange={(v) => {
                                             const updated = [...editDetails];
-                                            updated[i].content = e.target.value;
+                                            updated[i].content = v;
                                             setEditDetails(updated);
                                         }}
-                                        className="flex-1 border p-2 rounded"
                                         placeholder="Content"
                                     />
 
@@ -510,9 +632,9 @@ export default function QuestionBank({
                                     },
                                 ])
                             }
-                            className="mb-4 text-blue-500"
+                            className="mb-4 text-primary"
                         >
-                            + Add Detail
+                            Add Detail
                         </button>
 
                         {/* ACTIONS */}
@@ -528,11 +650,11 @@ export default function QuestionBank({
                             <TextButton
                                 variant="primary"
                                 onClick={async () => {
-                                    // 🔥 1. update topic
                                     const { error } = await supabase
                                         .from("topics")
                                         .update({
                                             part: editPart,
+                                            title: editTitle,
                                             prompt: editPrompt,
                                             is_active: editActive,
                                         })
@@ -543,13 +665,11 @@ export default function QuestionBank({
                                         return;
                                     }
 
-                                    // 🔥 2. delete old details
                                     await supabase
                                         .from("topic_details")
                                         .delete()
                                         .eq("topic_id", editTopic.id);
 
-                                    // 🔥 3. insert new details (preserve order_index)
                                     if (editDetails.length > 0) {
                                         await supabase.from("topic_details").insert(
                                             editDetails.map((d) => ({
@@ -561,13 +681,13 @@ export default function QuestionBank({
                                         );
                                     }
 
-                                    // 🔥 4. update UI
                                     setRows((prev) =>
                                         prev.map((r) =>
                                             r.id === editTopic.id
                                                 ? {
                                                     ...r,
                                                     part: editPart,
+                                                    title: editTitle,
                                                     prompt: editPrompt,
                                                     is_active: editActive,
                                                 }
@@ -579,7 +699,6 @@ export default function QuestionBank({
                                     setEditTopic(null);
                                     setEditDetails([]);
                                 }}
-                                className="px-4 py-2 bg-blue-500 text-white rounded"
                             >
                                 Save
                             </TextButton>
@@ -599,68 +718,77 @@ export default function QuestionBank({
                             <h3 className="text-lg font-semibold mb-4">Create Topic</h3>
 
                             {/* PART */}
-                            <select
-                                value={newPart}
-                                onChange={(e) => setNewPart(Number(e.target.value))}
-                                className="w-full mb-3 border p-2 rounded"
-                            >
-                                <option value={1}>Part 1</option>
-                                <option value={2}>Part 2</option>
-                                <option value={3}>Part 3</option>
-                            </select>
+                            <div className="w-full p-3 mb-3 text-primary outline-dashed outline-[var(--primary)] rounded-2xl">
+                                <select
+                                    value={newPart}
+                                    onChange={(e) => setNewPart(Number(e.target.value))}
+                                    className="w-full outline-none bg-transparent"
+                                >
+                                    <option value={1}>Part 1</option>
+                                    <option value={2}>Part 2</option>
+                                    <option value={3}>Part 3</option>
+                                </select>
+                            </div>
 
-                            {/* TITLE */}
-                            <input
-                                value={newTitle}
-                                onChange={(e) => setNewTitle(e.target.value)}
-                                placeholder="Title"
-                                className="w-full mb-3 border p-2 rounded"
-                            />
+                            <label htmlFor="newTitle" className="w-full block text-base font-bold text-primary">
+                                Title
+                                <InputField
+                                    className="flex-1 min-w-0 mt-2 my-3"
+                                    value={newTitle}
+                                    onChange={(v) => setNewTitle(v)}
+                                    placeholder="Title"
+                                />
+                            </label>
 
                             {/* PROMPT */}
-                            <input
-                                value={newPrompt}
-                                onChange={(e) => setNewPrompt(e.target.value)}
-                                placeholder="Prompt"
-                                className="w-full mb-3 border p-2 rounded"
-                            />
+                            <label htmlFor="newPrompt" className="w-full block text-base font-bold text-primary">
+                                Prompt
+                                <InputField
+                                    className="flex-1 min-w-0 mt-2 my-3"
+                                    value={newPrompt}
+                                    onChange={(v) => setNewPrompt(v)}
+                                    placeholder="Prompt"
+                                />
+                            </label>
 
                             {/* ACTIVE */}
-                            <label className="flex gap-2 mb-4">
-                                <input
-                                    type="checkbox"
+                            <div className="flex items-center justify-between mb-4">
+                                <span className="text-sm font-medium">Activate topic</span>
+
+                                <Toggle
                                     checked={newActive}
-                                    onChange={(e) => setNewActive(e.target.checked)}
+                                    onChange={(v) => setNewActive(v)}
                                 />
-                                Active
-                            </label>
+                            </div>
 
                             {/* DETAILS */}
                             <div className="space-y-2 mb-4">
                                 {newDetails.map((d, i) => (
                                     <div key={i} className="flex gap-2">
-                                        <select
-                                            value={d.type}
-                                            onChange={(e) => {
-                                                const updated = [...newDetails];
-                                                updated[i].type = e.target.value as any;
-                                                setNewDetails(updated);
-                                            }}
-                                            className="border p-2 rounded"
-                                        >
-                                            <option value="question">Question</option>
-                                            <option value="bullet">Bullet</option>
-                                        </select>
+                                        <div className="mx-auto p-3 text-primary outline-dashed outline-[var(--primary)] rounded-2xl flex items-center">
+                                            <select
+                                                value={d.type}
+                                                onChange={(e) => {
+                                                    const updated = [...newDetails];
+                                                    updated[i].type = e.target.value as any;
+                                                    setNewDetails(updated);
+                                                }}
+                                                className="bg-transparent outline-none w-full"
+                                            >
+                                                <option value="question">Question</option>
+                                                <option value="bullet">Bullet</option>
+                                            </select>
+                                        </div>
 
-                                        <input
+                                        <InputField
+                                            className="flex-1"
                                             value={d.content}
-                                            onChange={(e) => {
+                                            onChange={(v) => {
                                                 const updated = [...newDetails];
-                                                updated[i].content = e.target.value;
+                                                updated[i].content = v;
                                                 setNewDetails(updated);
                                             }}
                                             placeholder="Content"
-                                            className="flex-1 border p-2 rounded"
                                         />
 
                                         <button
@@ -687,65 +815,66 @@ export default function QuestionBank({
                                         },
                                     ])
                                 }
-                            className="mb-4 text-blue-500"
+
+                                className="text-primary my-4"
                             >
-                            + Add Detail
-                        </button>
+                                Add Detail
+                            </button>
 
-                        {/* ACTIONS */}
-                        <div className="flex justify-end gap-2">
-                            <TextButton
-                                variant="secondary"
-                                onClick={() => setIsCreateOpen(false)}
-                            >
-                                Cancel
-                            </TextButton>
-                            <TextButton
-                                variant="primary"
-                                onClick={async () => {
-                                    const { data: topic, error } = await supabase
-                                        .from("topics")
-                                        .insert({
-                                            part: newPart,
-                                            title: newTitle,
-                                            prompt: newPrompt,
-                                            is_active: newActive,
-                                        })
-                                        .select()
-                                        .single();
+                            {/* ACTIONS */}
+                            <div className="flex justify-end gap-2">
+                                <TextButton
+                                    variant="secondary"
+                                    onClick={() => setIsCreateOpen(false)}
+                                >
+                                    Cancel
+                                </TextButton>
+                                <TextButton
+                                    variant="primary"
+                                    onClick={async () => {
+                                        const { data: topic, error } = await supabase
+                                            .from("topics")
+                                            .insert({
+                                                part: newPart,
+                                                title: newTitle,
+                                                prompt: newPrompt,
+                                                is_active: newActive,
+                                            })
+                                            .select()
+                                            .single();
 
-                                    if (error) {
-                                        alert(error.message);
-                                        return;
-                                    }
+                                        if (error) {
+                                            alert(error.message);
+                                            return;
+                                        }
 
-                                    if (newDetails.length > 0) {
-                                        await supabase.from("topic_details").insert(
-                                            newDetails.map((d, i) => ({
-                                                topic_id: topic.id,
-                                                type: d.type,
-                                                content: d.content,
-                                                order_index: i,
-                                            }))
-                                        );
-                                    }
+                                        if (newDetails.length > 0) {
+                                            await supabase.from("topic_details").insert(
+                                                newDetails.map((d, i) => ({
+                                                    topic_id: topic.id,
+                                                    type: d.type,
+                                                    content: d.content,
+                                                    order_index: i,
+                                                }))
+                                            );
+                                        }
 
-                                    setRows((prev) => [topic, ...prev]);
+                                        setRows((prev) => [topic, ...prev]);
 
-                                    setIsCreateOpen(false);
-                                    setNewPrompt("");
-                                    setNewPart(1);
-                                    setNewActive(true);
-                                    setNewDetails([]);
-                                }}
-                            >
-                                Create
-                            </TextButton>
+                                        setIsCreateOpen(false);
+                                        setNewPrompt("");
+                                        setNewPart(1);
+                                        setNewActive(true);
+                                        setNewDetails([]);
+                                    }}
+                                >
+                                    Create
+                                </TextButton>
+                            </div>
                         </div>
                     </div>
-                    </div>
-    )
-}
+                )
+            }
         </section >
     );
 }

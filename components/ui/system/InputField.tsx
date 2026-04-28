@@ -5,18 +5,20 @@ import { TextInput } from "./TextInput";
 type InputFieldProps = {
   value: string;
   onChange: (v: string) => void;
+  placeholder?: string;
   className?: string;
 };
 
 export function InputField({
   value,
   onChange,
+  placeholder,
   className = "",
 }: InputFieldProps) {
   return (
     <div
       className={`
-        w-full max-w-md p-3 flex flex-col bg-tertiary rounded-2xl
+        p-3 flex flex-col bg-tertiary rounded-2xl
         shadow-[1px_2px_12px_0px_rgba(217,217,217,0.50)]
         outline outline-dashed outline-offset-1 outline-[var(--primary)]
         text-primary gap-2
@@ -26,7 +28,7 @@ export function InputField({
       <TextInput
         value={value}
         onChange={onChange}
-        placeholder="Type here..."
+        placeholder={placeholder}
       />
     </div>
   );
