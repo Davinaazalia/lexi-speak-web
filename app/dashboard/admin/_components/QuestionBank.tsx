@@ -13,6 +13,13 @@ type Question = {
     created_at: string | null;
 };
 
+type Detail = {
+    id?: string;
+    type: "question" | "bullet";
+    content: string;
+    order_index: number;
+};
+
 type QuestionBankProps = {
     title: string;
     description: string;
@@ -43,6 +50,7 @@ export default function QuestionBank({
     const [editPrompt, setEditPrompt] = useState("");
     const [editPart, setEditPart] = useState<number>(1);
     const [editActive, setEditActive] = useState(true);
+    const [editDetails, setEditDetails] = useState<Detail[]>([]);
 
     const [isCreateOpen, setIsCreateOpen] = useState(false);
 
@@ -135,10 +143,7 @@ export default function QuestionBank({
             .eq("topic_id", topicId)
             .order("order_index");
 
-        setDetails((prev) => {
-            if (selectedTopicId !== topicId) return prev;
-            return data || [];
-        });
+        setDetails(data || []);
     };
 
     return (
@@ -263,12 +268,21 @@ export default function QuestionBank({
                                             <td className="px-5 py-4 text-sm flex gap-2">
                                                 {/* EDIT */}
                                                 <button
-                                                    onClick={(e) => {
+                                                    onClick={async (e) => {
                                                         e.stopPropagation();
+
                                                         setEditTopic(row);
                                                         setEditPrompt(row.prompt || "");
-                                                        setEditPart(Number(row.part));
+                                                        setEditPart(row.part);
                                                         setEditActive(row.is_active);
+
+                                                        const { data } = await supabase
+                                                            .from("topic_details")
+                                                            .select("*")
+                                                            .eq("topic_id", row.id)
+                                                            .order("order_index");
+
+                                                        setEditDetails(data || []);
                                                     }}
                                                     className="text-blue-500 hover:underline"
                                                 >
@@ -433,6 +447,74 @@ export default function QuestionBank({
                             Active
                         </label>
 
+                        {/* DETAILS */}
+                        <div className="space-y-2 mb-4">
+                            {editDetails.map((d, i) => (
+                                <div key={d.id ?? i} className="flex gap-2">
+
+                                    {/* TYPE */}
+                                    <select
+                                        value={d.type}
+                                        onChange={(e) => {
+                                            const updated = [...editDetails];
+                                            updated[i].type = e.target.value as any;
+                                            setEditDetails(updated);
+                                        }}
+                                        className="border p-2 rounded"
+                                    >
+                                        <option value="question">Question</option>
+                                        <option value="bullet">Bullet</option>
+                                    </select>
+
+                                    {/* CONTENT */}
+                                    <input
+                                        value={d.content}
+                                        onChange={(e) => {
+                                            const updated = [...editDetails];
+                                            updated[i].content = e.target.value;
+                                            setEditDetails(updated);
+                                        }}
+                                        className="flex-1 border p-2 rounded"
+                                        placeholder="Content"
+                                    />
+
+                                    {/* DELETE */}
+                                    <button
+                                        onClick={() => {
+                                            setEditDetails((prev) =>
+                                                prev
+                                                    .filter((_, idx) => idx !== i)
+                                                    .map((d, index) => ({
+                                                        ...d,
+                                                        order_index: index,
+                                                    }))
+                                            );
+                                        }}
+                                        className="text-red-500"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* ADD DETAIL */}
+                        <button
+                            onClick={() =>
+                                setEditDetails((prev) => [
+                                    ...prev,
+                                    {
+                                        type: "question",
+                                        content: "",
+                                        order_index: prev.length, // 🔥 important
+                                    },
+                                ])
+                            }
+                            className="mb-4 text-blue-500"
+                        >
+                            + Add Detail
+                        </button>
+
                         {/* ACTIONS */}
                         <div className="flex justify-end gap-2">
                             <TextButton
@@ -446,6 +528,7 @@ export default function QuestionBank({
                             <TextButton
                                 variant="primary"
                                 onClick={async () => {
+                                    // 🔥 1. update topic
                                     const { error } = await supabase
                                         .from("topics")
                                         .update({
@@ -455,24 +538,46 @@ export default function QuestionBank({
                                         })
                                         .eq("id", editTopic.id);
 
-                                    if (!error) {
-                                        setRows((prev) =>
-                                            prev.map((r) =>
-                                                r.id === editTopic.id
-                                                    ? {
-                                                        ...r,
-                                                        part: editPart,
-                                                        prompt: editPrompt,
-                                                        is_active: editActive,
-                                                    }
-                                                    : r
-                                            )
-                                        );
-
-                                        setEditTopic(null);
-                                    } else {
+                                    if (error) {
                                         alert(error.message);
+                                        return;
                                     }
+
+                                    // 🔥 2. delete old details
+                                    await supabase
+                                        .from("topic_details")
+                                        .delete()
+                                        .eq("topic_id", editTopic.id);
+
+                                    // 🔥 3. insert new details (preserve order_index)
+                                    if (editDetails.length > 0) {
+                                        await supabase.from("topic_details").insert(
+                                            editDetails.map((d) => ({
+                                                topic_id: editTopic.id,
+                                                type: d.type,
+                                                content: d.content,
+                                                order_index: d.order_index, // 🔥 USE EXISTING ORDER
+                                            }))
+                                        );
+                                    }
+
+                                    // 🔥 4. update UI
+                                    setRows((prev) =>
+                                        prev.map((r) =>
+                                            r.id === editTopic.id
+                                                ? {
+                                                    ...r,
+                                                    part: editPart,
+                                                    prompt: editPrompt,
+                                                    is_active: editActive,
+                                                }
+                                                : r
+                                        )
+                                    );
+
+                                    // 🔥 5. reset
+                                    setEditTopic(null);
+                                    setEditDetails([]);
                                 }}
                                 className="px-4 py-2 bg-blue-500 text-white rounded"
                             >
@@ -481,103 +586,109 @@ export default function QuestionBank({
                         </div>
                     </div>
                 </div>
-            )}
+            )
+            }
 
-            {isCreateOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-                    <div
-                        className="w-full max-w-lg rounded-2xl bg-white p-6"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <h3 className="text-lg font-semibold mb-4">Create Topic</h3>
-
-                        {/* PART */}
-                        <select
-                            value={newPart}
-                            onChange={(e) => setNewPart(Number(e.target.value))}
-                            className="w-full mb-3 border p-2 rounded"
+            {
+                isCreateOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                        <div
+                            className="w-full max-w-lg rounded-2xl bg-white p-6"
+                            onClick={(e) => e.stopPropagation()}
                         >
-                            <option value={1}>Part 1</option>
-                            <option value={2}>Part 2</option>
-                            <option value={3}>Part 3</option>
-                        </select>
+                            <h3 className="text-lg font-semibold mb-4">Create Topic</h3>
 
-                        {/* TITLE */}
-                        <input
-                            value={newTitle}
-                            onChange={(e) => setNewTitle(e.target.value)}
-                            placeholder="Title"
-                            className="w-full mb-3 border p-2 rounded"
-                        />
+                            {/* PART */}
+                            <select
+                                value={newPart}
+                                onChange={(e) => setNewPart(Number(e.target.value))}
+                                className="w-full mb-3 border p-2 rounded"
+                            >
+                                <option value={1}>Part 1</option>
+                                <option value={2}>Part 2</option>
+                                <option value={3}>Part 3</option>
+                            </select>
 
-                        {/* PROMPT */}
-                        <input
-                            value={newPrompt}
-                            onChange={(e) => setNewPrompt(e.target.value)}
-                            placeholder="Prompt"
-                            className="w-full mb-3 border p-2 rounded"
-                        />
-
-                        {/* ACTIVE */}
-                        <label className="flex gap-2 mb-4">
+                            {/* TITLE */}
                             <input
-                                type="checkbox"
-                                checked={newActive}
-                                onChange={(e) => setNewActive(e.target.checked)}
+                                value={newTitle}
+                                onChange={(e) => setNewTitle(e.target.value)}
+                                placeholder="Title"
+                                className="w-full mb-3 border p-2 rounded"
                             />
-                            Active
-                        </label>
 
-                        {/* DETAILS */}
-                        <div className="space-y-2 mb-4">
-                            {newDetails.map((d, i) => (
-                                <div key={i} className="flex gap-2">
-                                    <select
-                                        value={d.type}
-                                        onChange={(e) => {
-                                            const updated = [...newDetails];
-                                            updated[i].type = e.target.value as any;
-                                            setNewDetails(updated);
-                                        }}
-                                        className="border p-2 rounded"
-                                    >
-                                        <option value="question">Question</option>
-                                        <option value="bullet">Bullet</option>
-                                    </select>
+                            {/* PROMPT */}
+                            <input
+                                value={newPrompt}
+                                onChange={(e) => setNewPrompt(e.target.value)}
+                                placeholder="Prompt"
+                                className="w-full mb-3 border p-2 rounded"
+                            />
 
-                                    <input
-                                        value={d.content}
-                                        onChange={(e) => {
-                                            const updated = [...newDetails];
-                                            updated[i].content = e.target.value;
-                                            setNewDetails(updated);
-                                        }}
-                                        placeholder="Content"
-                                        className="flex-1 border p-2 rounded"
-                                    />
+                            {/* ACTIVE */}
+                            <label className="flex gap-2 mb-4">
+                                <input
+                                    type="checkbox"
+                                    checked={newActive}
+                                    onChange={(e) => setNewActive(e.target.checked)}
+                                />
+                                Active
+                            </label>
 
-                                    <button
-                                        onClick={() =>
-                                            setNewDetails((prev) => prev.filter((_, idx) => idx !== i))
-                                        }
-                                        className="text-red-500"
-                                    >
-                                        ✕
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
+                            {/* DETAILS */}
+                            <div className="space-y-2 mb-4">
+                                {newDetails.map((d, i) => (
+                                    <div key={i} className="flex gap-2">
+                                        <select
+                                            value={d.type}
+                                            onChange={(e) => {
+                                                const updated = [...newDetails];
+                                                updated[i].type = e.target.value as any;
+                                                setNewDetails(updated);
+                                            }}
+                                            className="border p-2 rounded"
+                                        >
+                                            <option value="question">Question</option>
+                                            <option value="bullet">Bullet</option>
+                                        </select>
 
-                        {/* ADD DETAIL */}
-                        <button
-                            onClick={() =>
-                                setNewDetails((prev) => [
-                                    ...prev,
-                                    { type: "question", content: "" },
-                                ])
-                            }
+                                        <input
+                                            value={d.content}
+                                            onChange={(e) => {
+                                                const updated = [...newDetails];
+                                                updated[i].content = e.target.value;
+                                                setNewDetails(updated);
+                                            }}
+                                            placeholder="Content"
+                                            className="flex-1 border p-2 rounded"
+                                        />
+
+                                        <button
+                                            onClick={() =>
+                                                setNewDetails((prev) => prev.filter((_, idx) => idx !== i))
+                                            }
+                                            className="text-red-500"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* ADD DETAIL */}
+                            <button
+                                onClick={() =>
+                                    setNewDetails((prev) => [
+                                        ...prev,
+                                        {
+                                            type: "question",
+                                            content: "",
+                                            order_index: prev.length,
+                                        },
+                                    ])
+                                }
                             className="mb-4 text-blue-500"
-                        >
+                            >
                             + Add Detail
                         </button>
 
@@ -632,8 +743,9 @@ export default function QuestionBank({
                             </TextButton>
                         </div>
                     </div>
-                </div>
-            )}
-        </section>
+                    </div>
+    )
+}
+        </section >
     );
 }
