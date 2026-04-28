@@ -367,7 +367,8 @@ on public.student_progress
 for insert
 to authenticated
 with check (
-  public.is_admin()
+  student_id = auth.uid()
+  or public.is_admin()
   or public.is_assigned_coach(student_id)
 );
 
@@ -376,11 +377,13 @@ on public.student_progress
 for update
 to authenticated
 using (
-  public.is_admin()
+  student_id = auth.uid()
+  or public.is_admin()
   or public.is_assigned_coach(student_id)
 )
 with check (
-  public.is_admin()
+  student_id = auth.uid()
+  or public.is_admin()
   or public.is_assigned_coach(student_id)
 );
 
@@ -429,6 +432,70 @@ on public.student_score_history
 for delete
 to authenticated
 using (public.is_admin());
+
+
+-- question bank
+create table public.topics (
+  id uuid primary key default gen_random_uuid(),
+  part int not null check (part in (1,2,3)),
+  title text not null,
+  prompt text,
+  is_active boolean default true,
+  created_at timestamptz default now()
+);
+
+create table public.topic_details (
+  id uuid primary key default gen_random_uuid(),
+  topic_id uuid references public.topics(id) on delete cascade,
+  type text not null check (type in ('question','bullet')),
+  content text not null,
+  order_index int default 0,
+  created_at timestamptz default now()
+);
+
+create index if not exists idx_topics_part on public.topics(part);
+create index if not exists idx_topic_details_topic_id on public.topic_details(topic_id);
+
+alter table public.topics enable row level security;
+alter table public.topic_details enable row level security;
+
+create policy "Allow read topics"
+on public.topics
+for select
+to authenticated
+using (is_active = true);
+
+create policy "Allow read topic_details"
+on public.topic_details
+for select
+to authenticated
+using (true);
+
+-- topics insert/update/delete
+create policy "Admin manage topics"
+on public.topics
+for all
+to authenticated
+using (
+  exists (
+    select 1 from public.profiles p
+    where p.id = auth.uid()
+    and p.role = 'admin'
+  )
+);
+
+-- topic_details insert/update/delete
+create policy "Admin manage topic_details"
+on public.topic_details
+for all
+to authenticated
+using (
+  exists (
+    select 1 from public.profiles p
+    where p.id = auth.uid()
+    and p.role = 'admin'
+  )
+);
 
 -- 6) Run once to make your account admin (replace with your login email)
 -- update public.profiles

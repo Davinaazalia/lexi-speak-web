@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { getActiveModel } from "@/lib/models";
+import PracticePartTwo from "@/components/PracticePartTwo";
 
 const GOALS = ["Speak more fluently", "Increase band score", "Interview practice", "Exam preparation"];
 const SPEAKING_LEVELS = [
@@ -121,6 +123,49 @@ const PART_1_TOPICS = [
   },
 ];
 
+const PART_2_TOPICS = [
+  {
+    shortLabel: "Memorable event",
+    prompt: "Describe a memorable event you attended.",
+    bulletPoints: [
+      "What the event was",
+      "When and where it happened",
+      "Who was there",
+      "Why it was memorable",
+    ],
+  },
+  {
+    shortLabel: "Place to visit",
+    prompt: "Describe a place you would like to visit.",
+    bulletPoints: [
+      "Where it is",
+      "What you plan to do there",
+      "Why you want to visit",
+      "How it would make you feel",
+    ],
+  },
+  {
+    shortLabel: "Person who inspired",
+    prompt: "Describe a person who has influenced you.",
+    bulletPoints: [
+      "Who they are",
+      "How you know them",
+      "What qualities you admire",
+      "Why they inspired you",
+    ],
+  },
+  {
+    shortLabel: "Skill to learn",
+    prompt: "Describe a skill you would like to learn.",
+    bulletPoints: [
+      "What the skill is",
+      "How you would learn it",
+      "Why it is useful",
+      "How it would affect your life",
+    ],
+  },
+];
+
 const STEP_COPY = [
   {
     title: "Start",
@@ -207,7 +252,7 @@ const calibrateAnalysisByLength = (answer: string, analysis: SpeakingAnalysis): 
   // Per IELTS rubric:
   // Band 3-4: "Limited ability to link sentences" or "Usually able to keep going" typically need 10+ words
   // Band 5+: Longer, more coherent turns typically 15+ words
-  
+
   let penalty = 0;
   let maxBand = 9;
   let shouldUpdateSummary = false;
@@ -354,57 +399,57 @@ const buildFallbackAnalysis = (answer: string): SpeakingAnalysis => {
   // Fluency and Coherence (per rubric)
   const fluencyScore = clampScore(
     wordCount < 3 ? 1 :           // Band 1: incoherent
-    wordCount < 5 ? 2 :           // Band 2: isolated words, long pauses
-    sentenceCount < 1 ? 2.5 :     // Barely complete thoughts
-    wordCount < 15 ? 3 :          // Band 3: limited ability to keep going
-    sentenceCount < 2 ? 4 :       // Band 4: can produce some output but minimal linking
-    connectorHits === 0 && fillerHits > 2 ? 4.5 : // Band 4-5 boundary: disfluent
-    connectorHits < 2 && fillerHits > 1 ? 5 :    // Band 5: relies on repetition
-    sentenceCount >= 2 && connectorHits >= 1 && fillerHits <= 2 ? 6 :  // Band 6: basic coherence
-    wordCount >= 40 && connectorHits >= 2 && fillerHits <= 1 ? 7 :     // Band 7: coherent longer turns
-    wordCount >= 60 && fillerHits === 0 ? 8 :    // Band 8: fluent
-    9                                             // Band 9: excellent (rare)
+      wordCount < 5 ? 2 :           // Band 2: isolated words, long pauses
+        sentenceCount < 1 ? 2.5 :     // Barely complete thoughts
+          wordCount < 15 ? 3 :          // Band 3: limited ability to keep going
+            sentenceCount < 2 ? 4 :       // Band 4: can produce some output but minimal linking
+              connectorHits === 0 && fillerHits > 2 ? 4.5 : // Band 4-5 boundary: disfluent
+                connectorHits < 2 && fillerHits > 1 ? 5 :    // Band 5: relies on repetition
+                  sentenceCount >= 2 && connectorHits >= 1 && fillerHits <= 2 ? 6 :  // Band 6: basic coherence
+                    wordCount >= 40 && connectorHits >= 2 && fillerHits <= 1 ? 7 :     // Band 7: coherent longer turns
+                      wordCount >= 60 && fillerHits === 0 ? 8 :    // Band 8: fluent
+                        9                                             // Band 9: excellent (rare)
   );
 
   // Lexical Resource (per rubric)
   const lexicalScore = clampScore(
     wordCount < 3 ? 1 :           // Band 1: no resource
-    wordCount < 5 ? 2 :           // Band 2: isolated words, memorized
-    uniqueRatio < 0.4 ? 3 :       // Band 3: very limited, mainly personal info
-    uniqueRatio < 0.5 ? 4 :       // Band 4: sufficient for familiar topics, errors in unfamiliar
-    uniqueRatio < 0.6 ? 5 :       // Band 5: limited flexibility, inappropriate word choice
-    uniqueRatio < 0.7 ? 6 :       // Band 6: sufficient resource, can paraphrase, some errors
-    uniqueRatio < 0.8 ? 7 :       // Band 7: good flexibility, less common items used
-    wordCount >= 50 && uniqueRatio >= 0.75 ? 8 : // Band 8: wide resource, flexible
-    9                                             // Band 9: total flexibility, precise use
+      wordCount < 5 ? 2 :           // Band 2: isolated words, memorized
+        uniqueRatio < 0.4 ? 3 :       // Band 3: very limited, mainly personal info
+          uniqueRatio < 0.5 ? 4 :       // Band 4: sufficient for familiar topics, errors in unfamiliar
+            uniqueRatio < 0.6 ? 5 :       // Band 5: limited flexibility, inappropriate word choice
+              uniqueRatio < 0.7 ? 6 :       // Band 6: sufficient resource, can paraphrase, some errors
+                uniqueRatio < 0.8 ? 7 :       // Band 7: good flexibility, less common items used
+                  wordCount >= 50 && uniqueRatio >= 0.75 ? 8 : // Band 8: wide resource, flexible
+                    9                                             // Band 9: total flexibility, precise use
   );
 
   // Grammatical Range and Accuracy (per rubric)
   const grammarScore = clampScore(
     wordCount < 3 ? 1 :           // Band 1: no rateable language
-    wordCount < 5 ? 2 :           // Band 2: no evidence of basic forms
-    sentenceCount < 1 ? 2 :       // Can't form even 1 complete sentence
-    wordCount < 15 ? 3 :          // Band 3: limited range, errors in both complex and basic
-    sentenceCount < 2 ? 4 :       // Band 4: basic forms OK, complex rarely used
-    punctuationHits === 0 ? 4.5 : // Band 4-5: minimal punctuation/accuracy
-    sentenceCount >= 2 && punctuationHits >= 1 ? 5 : // Band 5: basic controlled, complex errors
-    sentenceCount >= 3 && wordCount >= 35 ? 6 :      // Band 6: range with flexibility, some errors
-    wordCount >= 50 && sentenceCount >= 4 ? 7 :      // Band 7: good range, error-free frequent
-    wordCount >= 70 && punctuationHits >= 5 ? 8 :    // Band 8: wide range, mostly error-free
-    9                                                 // Band 9: precise, accurate structures
+      wordCount < 5 ? 2 :           // Band 2: no evidence of basic forms
+        sentenceCount < 1 ? 2 :       // Can't form even 1 complete sentence
+          wordCount < 15 ? 3 :          // Band 3: limited range, errors in both complex and basic
+            sentenceCount < 2 ? 4 :       // Band 4: basic forms OK, complex rarely used
+              punctuationHits === 0 ? 4.5 : // Band 4-5: minimal punctuation/accuracy
+                sentenceCount >= 2 && punctuationHits >= 1 ? 5 : // Band 5: basic controlled, complex errors
+                  sentenceCount >= 3 && wordCount >= 35 ? 6 :      // Band 6: range with flexibility, some errors
+                    wordCount >= 50 && sentenceCount >= 4 ? 7 :      // Band 7: good range, error-free frequent
+                      wordCount >= 70 && punctuationHits >= 5 ? 8 :    // Band 8: wide range, mostly error-free
+                        9                                                 // Band 9: precise, accurate structures
   );
 
   // Pronunciation (from transcript signals - text-based heuristics)
   const pronunciationScore = clampScore(
     wordCount < 3 ? 1 :           // Band 1: unintelligible
-    wordCount < 5 ? 2 :           // Band 2: main mispronunciations, unintelligible patches
-    fillerHits > 5 ? 3 :          // Band 3: range limited, stress patterns inaccurate
-    fillerHits > 3 ? 4 :          // Band 4: range limited, frequent mispronunciation
-    fillerHits > 2 ? 5 :          // Band 5: range variable, occasional lack of clarity
-    fillerHits > 1 && wordCount >= 20 ? 6 : // Band 6: range used, variable control
-    fillerHits <= 1 && wordCount >= 40 ? 7 : // Band 7: consistent control, sustained features
-    fillerHits === 0 && wordCount >= 60 ? 8 : // Band 8: wide range, flexible, effortless
-    9                                         // Band 9: full range, effortless, precise
+      wordCount < 5 ? 2 :           // Band 2: main mispronunciations, unintelligible patches
+        fillerHits > 5 ? 3 :          // Band 3: range limited, stress patterns inaccurate
+          fillerHits > 3 ? 4 :          // Band 4: range limited, frequent mispronunciation
+            fillerHits > 2 ? 5 :          // Band 5: range variable, occasional lack of clarity
+              fillerHits > 1 && wordCount >= 20 ? 6 : // Band 6: range used, variable control
+                fillerHits <= 1 && wordCount >= 40 ? 7 : // Band 7: consistent control, sustained features
+                  fillerHits === 0 && wordCount >= 60 ? 8 : // Band 8: wide range, flexible, effortless
+                    9                                         // Band 9: full range, effortless, precise
   );
 
   const criteria: CriterionAnalysis[] = [
@@ -413,14 +458,14 @@ const buildFallbackAnalysis = (answer: string): SpeakingAnalysis => {
       score: fluencyScore,
       feedback:
         fluencyScore <= 1 ? "Speech is totally incoherent. Focus on forming at least 2-3 complete sentences." :
-        fluencyScore <= 2 ? "Long pauses before words; isolated responses. Aim to link simple ideas." :
-        fluencyScore <= 3 ? "Limited ability to keep going; frequent pauses and hesitations. Work on extending responses." :
-        fluencyScore <= 4 ? "Usually able to keep going but with repetition and self-correction. Add connectors to link sentences." :
-        fluencyScore <= 5 ? "Can keep going but relies on repetition; mid-sentence searches. Use more discourse markers." :
-        fluencyScore <= 6 ? "Demonstrates willingness for longer turns; occasional coherence loss due to hesitation. Refine transitions." :
-        fluencyScore <= 7 ? "Readily produces longer turns with only occasional hesitation. Add more varied connectors." :
-        fluencyScore <= 8 ? "Fluent with only occasional repetition or self-correction. Near-native flow achieved." :
-        "Exceptional fluency; hesitation only for content preparation, not language searching.",
+          fluencyScore <= 2 ? "Long pauses before words; isolated responses. Aim to link simple ideas." :
+            fluencyScore <= 3 ? "Limited ability to keep going; frequent pauses and hesitations. Work on extending responses." :
+              fluencyScore <= 4 ? "Usually able to keep going but with repetition and self-correction. Add connectors to link sentences." :
+                fluencyScore <= 5 ? "Can keep going but relies on repetition; mid-sentence searches. Use more discourse markers." :
+                  fluencyScore <= 6 ? "Demonstrates willingness for longer turns; occasional coherence loss due to hesitation. Refine transitions." :
+                    fluencyScore <= 7 ? "Readily produces longer turns with only occasional hesitation. Add more varied connectors." :
+                      fluencyScore <= 8 ? "Fluent with only occasional repetition or self-correction. Near-native flow achieved." :
+                        "Exceptional fluency; hesitation only for content preparation, not language searching.",
       nextStep: "Practice speaking in longer chunks without pausing between words.",
     },
     {
@@ -428,14 +473,14 @@ const buildFallbackAnalysis = (answer: string): SpeakingAnalysis => {
       score: lexicalScore,
       feedback:
         lexicalScore <= 1 ? "No measurable vocabulary resource. Use more varied words beyond basic vocabulary." :
-        lexicalScore <= 2 ? "Very limited resource; isolated memorized words. Build basic vocabulary foundation." :
-        lexicalScore <= 3 ? "Limited to simple vocabulary for personal information. Expand to new topics." :
-        lexicalScore <= 4 ? "Sufficient for familiar topics; inadequate for unfamiliar; frequent errors in word choice." :
-        lexicalScore <= 5 ? "Limited flexibility; attempts paraphrase but not always successfully. Study synonyms." :
-        lexicalScore <= 6 ? "Sufficient to discuss topics at length; some inappropriate vocabulary but meaning clear. Practice paraphrasing." :
-        lexicalScore <= 7 ? "Uses less common and idiomatic items with flexibility; occasional inaccuracies." :
-        lexicalScore <= 8 ? "Wide resource readily used to discuss all topics; skillful use of less common items." :
-        "Total flexibility and precise use in all contexts; sustained accurate and idiomatic language.",
+          lexicalScore <= 2 ? "Very limited resource; isolated memorized words. Build basic vocabulary foundation." :
+            lexicalScore <= 3 ? "Limited to simple vocabulary for personal information. Expand to new topics." :
+              lexicalScore <= 4 ? "Sufficient for familiar topics; inadequate for unfamiliar; frequent errors in word choice." :
+                lexicalScore <= 5 ? "Limited flexibility; attempts paraphrase but not always successfully. Study synonyms." :
+                  lexicalScore <= 6 ? "Sufficient to discuss topics at length; some inappropriate vocabulary but meaning clear. Practice paraphrasing." :
+                    lexicalScore <= 7 ? "Uses less common and idiomatic items with flexibility; occasional inaccuracies." :
+                      lexicalScore <= 8 ? "Wide resource readily used to discuss all topics; skillful use of less common items." :
+                        "Total flexibility and precise use in all contexts; sustained accurate and idiomatic language.",
       nextStep: "Learn and practice 10-15 new topic-specific words and their collocations.",
     },
     {
@@ -443,14 +488,14 @@ const buildFallbackAnalysis = (answer: string): SpeakingAnalysis => {
       score: grammarScore,
       feedback:
         grammarScore <= 1 ? "No evidence of basic sentence forms. Focus on simple subject-verb-object sentences." :
-        grammarScore <= 2 ? "Numerous grammatical errors; no evidence of basic forms. Practice fundamental structures." :
-        grammarScore <= 3 ? "Limited range; errors in both basic and complex structures; subordinate clauses rare. Study basic tenses." :
-        grammarScore <= 4 ? "Basic sentence forms controlled; complex structures attempted but rarely successful. Mix simple and complex." :
-        grammarScore <= 5 ? "Basic forms fairly well controlled; complex structures attempted but limited and error-prone. Practice complex sentences." :
-        grammarScore <= 6 ? "Range of structures used with flexibility; error-free sentences frequent; occasional errors persist." :
-        grammarScore <= 7 ? "Good range used accurately and flexibly; error-free sentences frequent; few errors despite complexity." :
-        grammarScore <= 8 ? "Wide range flexibly used; mostly error-free; occasional non-systematic errors. Near-native accuracy." :
-        "Structures precise and accurate at all times; mistakes only characteristic of native speaker speech.",
+          grammarScore <= 2 ? "Numerous grammatical errors; no evidence of basic forms. Practice fundamental structures." :
+            grammarScore <= 3 ? "Limited range; errors in both basic and complex structures; subordinate clauses rare. Study basic tenses." :
+              grammarScore <= 4 ? "Basic sentence forms controlled; complex structures attempted but rarely successful. Mix simple and complex." :
+                grammarScore <= 5 ? "Basic forms fairly well controlled; complex structures attempted but limited and error-prone. Practice complex sentences." :
+                  grammarScore <= 6 ? "Range of structures used with flexibility; error-free sentences frequent; occasional errors persist." :
+                    grammarScore <= 7 ? "Good range used accurately and flexibly; error-free sentences frequent; few errors despite complexity." :
+                      grammarScore <= 8 ? "Wide range flexibly used; mostly error-free; occasional non-systematic errors. Near-native accuracy." :
+                        "Structures precise and accurate at all times; mistakes only characteristic of native speaker speech.",
       nextStep: "Practice combining simple sentences with complex structures using because, although, and if-clauses.",
     },
     {
@@ -458,14 +503,14 @@ const buildFallbackAnalysis = (answer: string): SpeakingAnalysis => {
       score: pronunciationScore,
       feedback:
         pronunciationScore <= 1 ? "Unintelligible delivery; communication not possible. Record and listen to your speech." :
-        pronunciationScore <= 2 ? "Frequent pauses and mispronunciations; overall delivery severely impaired. Slow down and pronounce clearly." :
-        pronunciationScore <= 3 ? "Limited phonological range; stress patterns inaccurate; understanding requires considerable effort." :
-        pronunciationScore <= 4 ? "Limited range; frequent mispronunciation; chunking imprecise; stress/intonation attempts ineffective." :
-        pronunciationScore <= 5 ? "Range variable; some mispronunciation; occasional lack of clarity; understanding requires effort." :
-        pronunciationScore <= 6 ? "Range used but variable control; some difficulty from intonation/stress; occasional mispronunciation." :
-        pronunciationScore <= 7 ? "Consistent control of phonological features; appropriate stress and intonation with some flexibility." :
-        pronunciationScore <= 8 ? "Wide range of phonological features; sustained appropriate rhythm and intonation; easily understood." :
-        "Full range of phonological features; effortless understanding; flexible connected speech; accent has no effect.",
+          pronunciationScore <= 2 ? "Frequent pauses and mispronunciations; overall delivery severely impaired. Slow down and pronounce clearly." :
+            pronunciationScore <= 3 ? "Limited phonological range; stress patterns inaccurate; understanding requires considerable effort." :
+              pronunciationScore <= 4 ? "Limited range; frequent mispronunciation; chunking imprecise; stress/intonation attempts ineffective." :
+                pronunciationScore <= 5 ? "Range variable; some mispronunciation; occasional lack of clarity; understanding requires effort." :
+                  pronunciationScore <= 6 ? "Range used but variable control; some difficulty from intonation/stress; occasional mispronunciation." :
+                    pronunciationScore <= 7 ? "Consistent control of phonological features; appropriate stress and intonation with some flexibility." :
+                      pronunciationScore <= 8 ? "Wide range of phonological features; sustained appropriate rhythm and intonation; easily understood." :
+                        "Full range of phonological features; effortless understanding; flexible connected speech; accent has no effect.",
       nextStep: "Reduce filler words and practice clear articulation with consistent pacing.",
     },
   ];
@@ -476,13 +521,13 @@ const buildFallbackAnalysis = (answer: string): SpeakingAnalysis => {
 
   const summary =
     overallScore <= 2 ? "Performance at Band 1-2: Speech is incoherent or very limited. Focus on forming complete, simple sentences and extending responses to 20+ words." :
-    overallScore <= 3 ? "Performance at Band 3: Limited ability to keep going; frequent pauses. Work on linking ideas and maintaining fluency for longer stretches." :
-    overallScore <= 4 ? "Performance at Band 4: Usually able to continue but relies on repetition. Improve grammar accuracy and add discourse markers to transitions." :
-    overallScore <= 5 ? "Performance at Band 5: Can keep going but hesitates and self-corrects frequently. Practice smoother delivery and expand vocabulary range." :
-    overallScore <= 6 ? "Performance at Band 6: Demonstrates willingness to produce longer turns; some coherence issues remain. Refine accuracy and reduce filler words." :
-    overallScore <= 7 ? "Performance at Band 7: Readily produces longer turns with occasional hesitation. Continue refining grammar precision and vocabulary sophistication." :
-    overallScore <= 8 ? "Performance at Band 8: Fluent speech with only occasional repetition or self-correction. Focus on near-native accuracy and advanced vocabulary." :
-    "Performance at Band 9: Excellent fluency and accuracy. Continue polishing for exam-level performance.";
+      overallScore <= 3 ? "Performance at Band 3: Limited ability to keep going; frequent pauses. Work on linking ideas and maintaining fluency for longer stretches." :
+        overallScore <= 4 ? "Performance at Band 4: Usually able to continue but relies on repetition. Improve grammar accuracy and add discourse markers to transitions." :
+          overallScore <= 5 ? "Performance at Band 5: Can keep going but hesitates and self-corrects frequently. Practice smoother delivery and expand vocabulary range." :
+            overallScore <= 6 ? "Performance at Band 6: Demonstrates willingness to produce longer turns; some coherence issues remain. Refine accuracy and reduce filler words." :
+              overallScore <= 7 ? "Performance at Band 7: Readily produces longer turns with occasional hesitation. Continue refining grammar precision and vocabulary sophistication." :
+                overallScore <= 8 ? "Performance at Band 8: Fluent speech with only occasional repetition or self-correction. Focus on near-native accuracy and advanced vocabulary." :
+                  "Performance at Band 9: Excellent fluency and accuracy. Continue polishing for exam-level performance.";
 
   return {
     overallScore,
@@ -558,6 +603,11 @@ const requestModelAnalysis = async (
   speakingLevel?: string,
   targetTime?: string,
 ) => {
+  // Load the active model from models.json
+  const activeModel = await getActiveModel();
+  const baseUrl = activeModel.endpoint;
+  const modelName = activeModel.modelName;
+
   const systemPrompt = [
     "You are an IELTS Speaking examiner. You MUST use the official IELTS Band Descriptors below to score responses.",
     "",
@@ -607,13 +657,13 @@ const requestModelAnalysis = async (
 
   const userPrompt = userPromptParts.join("\n");
 
-  const response = await fetch(`${LM_STUDIO_BASE_URL}/v1/chat/completions`, {
+  const response = await fetch(`${baseUrl}/v1/chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "ielts-scorer",
+      model: modelName,
       temperature: 0.2,
       messages: [
         { role: "system", content: systemPrompt },
@@ -730,6 +780,13 @@ export default function Home() {
   const [sessionTimeLeft, setSessionTimeLeft] = useState(SESSION_TIME_LIMIT_SECONDS);
   const [selectedPart1TopicIndex, setSelectedPart1TopicIndex] = useState<number | null>(null);
   const [showTopicSelector, setShowTopicSelector] = useState(false);
+  const [selectedPart2TopicIndex, setSelectedPart2TopicIndex] = useState<number | null>(null);
+  const [showPart2TopicSelector, setShowPart2TopicSelector] = useState(false);
+  const [isPart2PrepActive, setIsPart2PrepActive] = useState(false);
+  const [part2PrepTimeLeft, setPart2PrepTimeLeft] = useState(60);
+  const [hasPart2FlashCardClosed, setHasPart2FlashCardClosed] = useState(false);
+  const [part2Warning, setPart2Warning] = useState("");
+  const [part2RecordingWarning, setPart2RecordingWarning] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isResponseTimerRunning, setIsResponseTimerRunning] = useState(false);
   const [flippedCriteria, setFlippedCriteria] = useState<Record<string, boolean>>({});
@@ -783,13 +840,8 @@ export default function Home() {
 
     const { error: rpcError } = await supabase.rpc("record_student_practice_progress", rpcPayload);
 
-    if (!rpcError) return;
-
-    const functionMissing =
-      rpcError.code === "PGRST202" ||
-      /Could not find the function\s+public\.record_student_practice_progress/i.test(rpcError.message);
-
-    if (!functionMissing) {
+    if (rpcError) {
+      console.error("RPC FAILED:", rpcError);
       setSpeechError(rpcError.message);
       return;
     }
@@ -837,25 +889,41 @@ export default function Home() {
 
   const speakingCards = useMemo<SpeakingCard[]>(() => {
     const unitPrefix = `Unit ${requestedUnit}`;
-    
+
     // For Part 1, use topic-based questions
     if (requestedPart === 1 && selectedPart1TopicIndex !== null) {
       const selectedTopic = PART_1_TOPICS[selectedPart1TopicIndex];
-      
+
       const part1Cards: SpeakingCard[] = selectedTopic.questions.map((question, idx) => ({
         id: idx + 1,
         title: `${unitPrefix} - Part 1 - ${selectedTopic.topic} (Q${idx + 1})`,
         promptText: `${unitPrefix}, Part 1 - Topic: "${selectedTopic.topic}"\n\nQuestion ${idx + 1}: ${question}`,
       }));
-      
+
       if (practiceMode === "learn") {
         return part1Cards;
       }
-      
+
       return part1Cards;
     }
 
     // For Part 1 without selected topic, or other parts
+    if (requestedPart === 2 && selectedPart2TopicIndex !== null) {
+      const selectedTopic = PART_2_TOPICS[selectedPart2TopicIndex];
+      return [
+        {
+          id: 1,
+          title: `${unitPrefix} - Part 2 - ${selectedTopic.shortLabel}`,
+          promptText: `${unitPrefix}, Part 2: ${selectedTopic.prompt}
+
+You should say:
+- ${selectedTopic.bulletPoints.join("\n- ")}
+
+You have one minute to prepare, and then up to two minutes to speak. Plan your notes carefully and answer clearly with details, examples, and a short summary.`,
+        },
+      ];
+    }
+
     const cards: SpeakingCard[] = [
       {
         id: 1,
@@ -883,6 +951,7 @@ export default function Home() {
 
   const activeSpeakingCard = speakingCards[currentCardIndex];
   const selectedPart1Topic = selectedPart1TopicIndex !== null ? PART_1_TOPICS[selectedPart1TopicIndex] : null;
+  const selectedPart2Topic = selectedPart2TopicIndex !== null ? PART_2_TOPICS[selectedPart2TopicIndex] : null;
 
   useEffect(() => {
     if (!autoStart || autoStartRef.current) return;
@@ -906,7 +975,7 @@ export default function Home() {
     if (isSpeakingSessionActive) return;
 
     autoStartRef.current = false;
-    
+
     // For Part 1, show topic selector instead of auto-starting
     if (requestedPart === 1 && selectedPart1TopicIndex === null) {
       setShowTopicSelector(true);
@@ -1136,7 +1205,7 @@ export default function Home() {
 
       recognition.lang = "en-US";
       recognition.interimResults = true;
-      recognition.continuous = false;
+      recognition.continuous = true;
 
       recognition.onresult = (event: any) => {
         let transcript = "";
@@ -1212,7 +1281,7 @@ export default function Home() {
 
       recognition.lang = "en-US";
       recognition.interimResults = true;
-      recognition.continuous = false;
+      recognition.continuous = true;
 
       recognition.onresult = (event: any) => {
         let transcript = "";
@@ -1322,13 +1391,101 @@ export default function Home() {
     setSessionTimeLeft(SESSION_TIME_LIMIT_SECONDS);
     setIsResponseTimerRunning(false);
     setFlippedCriteria({});
+    setIsPart2PrepActive(false);
+    setPart2PrepTimeLeft(60);
+    setHasPart2FlashCardClosed(false);
+    setPart2Warning("");
+    setPart2RecordingWarning("");
     keepTryingSentRef.current = false;
-    speakCardText(speakingCards[0].promptText);
+    if (requestedPart !== 2) {
+      speakCardText(speakingCards[0].promptText);
+    }
   };
+
+  const closePart2FlashCard = () => {
+    setIsPart2PrepActive(false);
+    setHasPart2FlashCardClosed(true);
+    setPart2Warning("");
+    setPart2RecordingWarning("");
+    appendMessages({ role: "assistant", text: "Preparation is over. Your two-minute recording starts now." });
+    startAnswerRecording();
+  };
+
+  useEffect(() => {
+    if (!isPart2PrepActive) return;
+    if (part2PrepTimeLeft <= 0) {
+      closePart2FlashCard();
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setPart2PrepTimeLeft((prev) => Math.max(0, prev - 1));
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [isPart2PrepActive, part2PrepTimeLeft]);
+
+  useEffect(() => {
+    if (!isPart2PrepActive) {
+      setPart2Warning("");
+      return;
+    }
+
+    if (part2PrepTimeLeft <= 10) {
+      setPart2Warning(
+        "Preparation time is almost up. Focus on the key points and get ready to speak clearly.",
+      );
+      return;
+    }
+
+    setPart2Warning("");
+  }, [isPart2PrepActive, part2PrepTimeLeft]);
+
+  useEffect(() => {
+    if (!isAnswerRecording || !hasPart2FlashCardClosed) {
+      setPart2RecordingWarning("");
+      return;
+    }
+
+    const words = answerTranscript.trim().split(/\s+/).filter(Boolean).length;
+    let warning = "";
+
+    if (responseTimeLeft <= 15) {
+      warning = "Final seconds: finish your answer clearly with one final summary.";
+    } else if (responseTimeLeft <= 45 && words < 25) {
+      warning = "Keep speaking and add another detail or example to fully answer the cue card.";
+    } else if (responseTimeLeft <= 90 && words < 20) {
+      warning = "You are speaking slowly. Try to keep talking and describe one more example.";
+    } else if (responseTimeLeft <= 120 && words < 10) {
+      warning = "Try to speak more and expand your response with details.";
+    }
+
+    setPart2RecordingWarning(warning);
+  }, [answerTranscript, isAnswerRecording, responseTimeLeft, hasPart2FlashCardClosed]);
 
   const goToUserDashboard = () => {
     router.push("/dashboard/user");
   };
+
+  useEffect(() => {
+    if (requestedPart !== 2) return;
+    setSelectedPart2TopicIndex(null);
+    setShowPart2TopicSelector(false);
+    setIsPart2PrepActive(false);
+    setHasPart2FlashCardClosed(false);
+    setPart2PrepTimeLeft(60);
+    setPart2Warning("");
+    setPart2RecordingWarning("");
+  }, [requestedPart, requestedUnit]);
+
+  useEffect(() => {
+    if (requestedPart !== 2) return;
+    if (selectedPart2TopicIndex === null) return;
+    if (isSpeakingSessionActive) return;
+    startSpeaking();
+  }, [requestedPart, selectedPart2TopicIndex, isSpeakingSessionActive]);
 
   useEffect(() => {
     if (!isSpeakingSessionActive || !isResponseTimerRunning || responseTimeLeft <= 0) return;
@@ -1402,14 +1559,40 @@ export default function Home() {
           </div>
         )}
 
-        <div className="mb-4 flex items-center justify-between rounded-2xl bg-white/70 px-4 py-3 shadow-sm backdrop-blur-sm" style={{ display: showTopicSelector && requestedPart === 1 ? "none" : "flex" }}>
+        {/* Part 2 Topic Selector */}
+        {showPart2TopicSelector && requestedPart === 2 && (
+          <div className="mx-auto mb-6 w-full max-w-3xl rounded-2xl bg-white/85 p-6 shadow-sm backdrop-blur-sm">
+            <h2 className="mb-4 text-lg font-semibold text-neutral-900">Choose a Part 2 Topic</h2>
+            <p className="mb-6 text-sm text-neutral-600">
+              Pick one topic. You will get one cue card, 1 minute to prepare, and 2 minutes to speak.
+            </p>
+            <div className="grid gap-3 md:grid-cols-2">
+              {PART_2_TOPICS.map((topic, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    setSelectedPart2TopicIndex(idx);
+                    setShowPart2TopicSelector(false);
+                    setCurrentCardIndex(0);
+                  }}
+                  className="rounded-lg border border-neutral-200 bg-white p-4 text-left transition hover:border-brand-300 hover:bg-brand-50 dark:border-neutral-700 dark:bg-white/[0.03] dark:hover:bg-brand-500/10"
+                >
+                  <p className="font-medium text-neutral-900 dark:text-white/90">{topic.shortLabel}</p>
+                  <p className="mt-2 text-xs text-neutral-500 dark:text-gray-400">{topic.prompt}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="mb-4 flex items-center justify-between rounded-2xl bg-white/70 px-4 py-3 shadow-sm backdrop-blur-sm" style={{ display: (showTopicSelector && requestedPart === 1) || (showPart2TopicSelector && requestedPart === 2) ? "none" : "flex" }}>
           <div className="text-sm text-neutral-600">
             Step {currentStep} of {WIZARD_STEPS.length}
           </div>
           <div className="text-sm font-medium text-neutral-900">{WIZARD_STEPS[activeStep]}</div>
         </div>
 
-        <div className="mx-auto grid min-h-[560px] w-full max-w-5xl gap-6 rounded-[30px] bg-white/85 p-5 shadow-sm backdrop-blur-sm lg:grid-cols-1" style={{ display: showTopicSelector && requestedPart === 1 ? "none" : "grid" }}>
+        <div className="mx-auto grid min-h-[560px] w-full max-w-5xl gap-6 rounded-[30px] bg-white/85 p-5 shadow-sm backdrop-blur-sm lg:grid-cols-1" style={{ display: (showTopicSelector && requestedPart === 1) || (showPart2TopicSelector && requestedPart === 2) ? "none" : "grid" }}>
           <div className="mx-auto flex min-h-[420px] w-full max-w-3xl flex-col rounded-[26px] bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(250,250,250,0.97))] p-5 shadow-sm">
             <div className="mb-4 flex items-center justify-between gap-3 text-sm text-neutral-500">
               <span>AI Coach</span>
@@ -1438,16 +1621,15 @@ export default function Home() {
                 return (
                   <div key={`${item.role}-${index}`} className={`flex ${isAssistant ? "justify-start" : "justify-end"}`}>
                     <div
-                      className={`max-w-[85%] rounded-3xl px-4 py-3 text-sm leading-6 shadow-sm ${
-                        isAssistant ? "bg-white text-neutral-800" : "border border-transparent"
-                      }`}
+                      className={`max-w-[85%] rounded-3xl px-4 py-3 text-sm leading-6 shadow-sm ${isAssistant ? "bg-white text-neutral-800" : "border border-transparent"
+                        }`}
                       style={
                         isAssistant
                           ? undefined
                           : {
-                              backgroundColor: "#111827",
-                              color: "#ffffff",
-                            }
+                            backgroundColor: "#111827",
+                            color: "#ffffff",
+                          }
                       }
                     >
                       {item.text}
@@ -1627,7 +1809,17 @@ export default function Home() {
                       {!isSpeakingSessionActive ? (
                         <button
                           type="button"
-                          onClick={goToUserDashboard}
+                          onClick={() => {
+                            if (requestedPart === 2) {
+                              if (selectedPart2TopicIndex === null) {
+                                setShowPart2TopicSelector(true);
+                                return;
+                              }
+                              startSpeaking();
+                              return;
+                            }
+                            goToUserDashboard();
+                          }}
                           className="flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-4 text-base font-medium text-white shadow-sm transition-transform duration-200 hover:-translate-y-[1px]"
                           style={{
                             backgroundImage:
@@ -1646,8 +1838,49 @@ export default function Home() {
                               fill="currentColor"
                             />
                           </svg>
-                          Start speaking now
+                          {requestedPart === 2 ? (selectedPart2TopicIndex === null ? "Choose topic and start" : "Start Part 2 practice") : "Start speaking now"}
                         </button>
+                      ) : requestedPart === 2 ? (
+                        <PracticePartTwo
+                          topics={PART_2_TOPICS}
+                          selectedTopicIndex={selectedPart2TopicIndex}
+                          selectedTopic={selectedPart2Topic}
+                          activeSpeakingCard={activeSpeakingCard}
+                          isPart2PrepActive={isPart2PrepActive}
+                          part2PrepTimeLeft={part2PrepTimeLeft}
+                          hasPart2FlashCardClosed={hasPart2FlashCardClosed}
+                          isAnswerRecording={isAnswerRecording}
+                          answerTranscript={answerTranscript}
+                          responseTimeLeft={responseTimeLeft}
+                          sessionTimeLeft={sessionTimeLeft}
+                          isAnalyzing={isAnalyzing}
+                          latestAnalysis={latestAnalysis}
+                          speechError={speechError}
+                          isAiSpeaking={isAiSpeaking}
+                          isTtsSupported={isTtsSupported}
+                          part2Warning={part2Warning}
+                          part2RecordingWarning={part2RecordingWarning}
+                          onSelectTopic={(index) => {
+                            setSelectedPart2TopicIndex(index);
+                            setShowPart2TopicSelector(false);
+                            setCurrentCardIndex(0);
+                            startSpeaking();
+                          }}
+                          onStartPreparation={() => {
+                            if (hasPart2FlashCardClosed) return;
+                            setIsPart2PrepActive(true);
+                            setPart2PrepTimeLeft(60);
+                            setPart2Warning("");
+                            setSpeechError("");
+                          }}
+                          onSpeakCardText={() => {
+                            if (activeSpeakingCard) speakCardText(activeSpeakingCard.promptText);
+                          }}
+                          onStopAnswerRecording={stopAnswerRecording}
+                          onMoveToNextCard={moveToNextCard}
+                          onSubmitCurrentAnswerAnalysis={submitCurrentAnswerAnalysis} onSetTtsRate={function (value: number): void {
+                            throw new Error("Function not implemented.");
+                          }} />
                       ) : (
                         <div className="space-y-3">
                           <div className="relative w-full">
@@ -1698,20 +1931,20 @@ export default function Home() {
                               >
                                 <div className="flex h-full min-h-[520px] flex-col bg-[#fff8f8] px-4 pt-4 pb-4">
                                   <div className="flex items-start justify-between text-sm text-neutral-600">
-                                  <button
-                                    type="button"
-                                    onClick={() => setIsCardFlipped(false)}
-                                    className="inline-flex items-center gap-2 font-medium text-neutral-700"
-                                  >
-                                    <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" className="h-4 w-4">
-                                      <path
-                                        d="M4 7h14l-2-2a1 1 0 1 1 1.4-1.4l3.7 3.7a1 1 0 0 1 0 1.4l-3.7 3.7A1 1 0 0 1 16 10.6L18 8H4a1 1 0 1 1 0-2Zm16 10H6l2 2a1 1 0 1 1-1.4 1.4l-3.7-3.7a1 1 0 0 1 0-1.4l3.7-3.7A1 1 0 0 1 8 13.4L6 16h14a1 1 0 1 1 0 2Z"
-                                        fill="currentColor"
-                                      />
-                                    </svg>
-                                    Back
-                                  </button>
-                                </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => setIsCardFlipped(false)}
+                                      className="inline-flex items-center gap-2 font-medium text-neutral-700"
+                                    >
+                                      <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" className="h-4 w-4">
+                                        <path
+                                          d="M4 7h14l-2-2a1 1 0 1 1 1.4-1.4l3.7 3.7a1 1 0 0 1 0 1.4l-3.7 3.7A1 1 0 0 1 16 10.6L18 8H4a1 1 0 1 1 0-2Zm16 10H6l2 2a1 1 0 1 1-1.4 1.4l-3.7-3.7a1 1 0 0 1 0-1.4l3.7-3.7A1 1 0 0 1 8 13.4L6 16h14a1 1 0 1 1 0 2Z"
+                                          fill="currentColor"
+                                        />
+                                      </svg>
+                                      Back
+                                    </button>
+                                  </div>
 
                                   <div className="flex flex-1 flex-col items-center justify-center px-8 py-10 text-center">
                                     <div className="text-xs font-medium uppercase tracking-[0.16em] text-neutral-500">
@@ -1817,11 +2050,10 @@ export default function Home() {
                                   </div>
                                   <div className="h-3 w-full overflow-hidden rounded-full bg-neutral-200">
                                     <div
-                                      className={`h-full rounded-full transition-all duration-500 ${
-                                        responseTimeLeft <= 5
-                                          ? "bg-gradient-to-r from-red-500 to-red-300"
-                                          : "bg-gradient-to-r from-[color:var(--primary)] to-[color:var(--secondary)]"
-                                      }`}
+                                      className={`h-full rounded-full transition-all duration-500 ${responseTimeLeft <= 5
+                                        ? "bg-gradient-to-r from-red-500 to-red-300"
+                                        : "bg-gradient-to-r from-[color:var(--primary)] to-[color:var(--secondary)]"
+                                        }`}
                                       style={{
                                         width: `${timerProgressPercent}%`,
                                       }}
@@ -1833,11 +2065,10 @@ export default function Home() {
                                   </div>
                                   <div className="h-3 w-full overflow-hidden rounded-full bg-neutral-200">
                                     <div
-                                      className={`h-full rounded-full transition-all duration-500 ${
-                                        sessionTimeLeft <= 60
-                                          ? "bg-gradient-to-r from-red-500 to-red-300"
-                                          : "bg-gradient-to-r from-[color:var(--primary)] to-[color:var(--secondary)]"
-                                      }`}
+                                      className={`h-full rounded-full transition-all duration-500 ${sessionTimeLeft <= 60
+                                        ? "bg-gradient-to-r from-red-500 to-red-300"
+                                        : "bg-gradient-to-r from-[color:var(--primary)] to-[color:var(--secondary)]"
+                                        }`}
                                       style={{
                                         width: `${(sessionTimeLeft / SESSION_TIME_LIMIT_SECONDS) * 100}%`,
                                       }}

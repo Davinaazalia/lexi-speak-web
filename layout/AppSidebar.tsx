@@ -13,6 +13,7 @@ import {
   PlugInIcon,
   TableIcon,
   UserCircleIcon,
+  FileIcon,
 } from "../icons/index";
 import SidebarWidget from "./SidebarWidget";
 
@@ -62,6 +63,11 @@ const adminNavItems: NavItem[] = [
     icon: <TableIcon />,
     name: "Role Management",
     path: "/dashboard/admin",
+  },
+  {
+    icon: <FileIcon />,
+    name: "Question Bank",
+    path: "/dashboard/admin/question-bank",
   },
   {
     icon: <UserCircleIcon />,

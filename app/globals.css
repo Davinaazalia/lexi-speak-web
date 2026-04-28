@@ -84,6 +84,21 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* ===== Status: Success ===== */
+  --color-success-text: #008607;
+  --color-success-bg: #bee6c3;
+
+  /* ===== Status: Warning ===== */
+  --color-warning-text: #da8e00;
+  --color-warning-bg: #f4e2ca;
+
+  /* ===== Status: Error ===== */
+  --color-error-text: #8a0000;
+  --color-error-bg: #e9baba;
+
+  --text-secondary: #9D9D9D;
+  --text-tertiary: #D9D9D9;
 }
 
 .dark {
@@ -119,6 +134,21 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+
+  /* ===== Status: Success ===== */
+  --color-success-text: #008607;
+  --color-success-bg: #bee6c3;
+
+  /* ===== Status: Warning ===== */
+  --color-warning-text: #da8e00;
+  --color-warning-bg: #f4e2ca;
+
+  /* ===== Status: Error ===== */
+  --color-error-text: #8a0000;
+  --color-error-bg: #e9baba;
+
+  --text-secondary: #9D9D9D;
+  --text-tertiary: #D9D9D9;
 }
 
 @layer base {
@@ -288,4 +318,27 @@
 
 .auth-secondary-button:active {
   transform: translateY(0);
+}
+
+.success {
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
+}
+
+.warning {
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+}
+
+.error {
+  background: var(--color-error-bg);
+  color: var(--color-error-text);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-tertiary {
+  color: var(--text-tertiary);
 }
