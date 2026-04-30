@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { getAllModels, type AIModel } from "@/lib/models";
 
 type AppRole = "user" | "guru" | "admin";
 
@@ -26,6 +27,8 @@ export default function AdminDashboardPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [pageSize, setPageSize] = useState<5 | 10>(10);
   const [currentPage, setCurrentPage] = useState(1);
+  const [models, setModels] = useState<AIModel[]>([]);
+  const [loadingModels, setLoadingModels] = useState(true);
 
   const counters = useMemo(() => {
     const total = profiles.length;
@@ -120,7 +123,17 @@ export default function AdminDashboardPage() {
       }
 
       setProfiles((data as ProfileRow[] | null) ?? []);
+
+      // Load models
+      try {
+        const loadedModels = await getAllModels();
+        setModels(loadedModels);
+      } catch (err) {
+        console.error("Failed to load models:", err);
+      }
+
       setLoading(false);
+      setLoadingModels(false);
     };
 
     void load();
@@ -155,6 +168,28 @@ export default function AdminDashboardPage() {
     () => profiles.filter((row) => row.role === "guru").map((row) => ({ id: row.id, email: row.email })),
     [profiles]
   );
+
+  const handleModelChange = (modelId: string) => {
+    // Update the models.json by creating a new array with the selected model as active
+    const updatedModels = models.map((m) => ({
+      ...m,
+      active: m.id === modelId,
+    }));
+    setModels(updatedModels);
+
+    // Write the updated models back to models.json
+    const modelsData = { models: updatedModels };
+    fetch("/api/update-models", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(modelsData),
+    }).catch((err) => {
+      console.error("Failed to save model selection:", err);
+      setNotice("Failed to save model selection");
+    });
+  };
+
+  const activeModel = useMemo(() => models.find((m) => m.active), [models]);
 
   const handleCoachAssign = async (studentId: string, coachId: string | null) => {
     setAssigningStudentId(studentId);
@@ -205,6 +240,52 @@ export default function AdminDashboardPage() {
           Track students and maintain all role accounts from one admin panel.
         </p>
         {notice ? <p className="mt-3 text-sm text-error-600">{notice}</p> : null}
+      </div>
+
+      {/* model settings */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
+        <h1 className="text-xl font-semibold text-gray-800 dark:text-white/90">Practice Session Model</h1>
+        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+          Select a model that will be used for practice sessions. This setting applies to all students and coaches, and can be changed anytime.
+        </p>
+
+        {loadingModels ? (
+          <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">Loading models...</p>
+        ) : models.length === 0 ? (
+          <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">No models available. Please check your models.json file.</p>
+        ) : (
+          <div className="mt-4 space-y-3">
+            {models.map((model) => (
+              <button
+                key={model.id}
+                onClick={() => handleModelChange(model.id)}
+                className={`w-full rounded-lg border-2 p-4 text-left transition ${
+                  model.active
+                    ? "border-brand-500 bg-brand-50 dark:border-brand-500 dark:bg-brand-500/10"
+                    : "border-gray-300 bg-white hover:border-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:hover:border-gray-600"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-gray-800 dark:text-white/90">{model.name}</p>
+                    <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                      Model: <span className="font-mono">{model.modelName}</span> • Endpoint:{" "}
+                      <span className="font-mono">{model.endpoint}</span>
+                    </p>
+                    {model.description && (
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{model.description}</p>
+                    )}
+                  </div>
+                  {model.active && (
+                    <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700 dark:bg-green-500/20 dark:text-green-400">
+                      Active
+                    </span>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
