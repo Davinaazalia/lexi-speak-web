@@ -289,3 +289,108 @@
 .auth-secondary-button:active {
   transform: translateY(0);
 }
+
+@keyframes chip-float-1 {
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-16px) rotate(1.2deg);
+  }
+}
+
+@keyframes chip-float-2 {
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(0) rotate(-9deg);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-18px) rotate(-6deg);
+  }
+}
+
+@keyframes chip-float-3 {
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-14px) rotate(-1deg);
+  }
+}
+
+.floating-chip-1 {
+  animation: chip-float-1 2.6s ease-in-out infinite;
+  will-change: transform;
+}
+
+.floating-chip-2 {
+  animation: chip-float-2 2.9s ease-in-out infinite;
+  animation-delay: 0.22s;
+  will-change: transform;
+}
+
+.floating-chip-3 {
+  animation: chip-float-3 2.7s ease-in-out infinite;
+  animation-delay: 0.4s;
+  will-change: transform;
+}
+
+@keyframes trusted-marquee-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.trusted-marquee {
+  overflow: hidden;
+  mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+}
+
+.trusted-marquee-track {
+  display: flex;
+  width: max-content;
+  gap: 16px;
+  animation: trusted-marquee-scroll 24s linear infinite;
+}
+
+.trusted-logo-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 210px;
+  padding: 10px 8px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: #6f2f2f;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.trusted-logo-mark {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--primary), #8e3232);
+  box-shadow: 0 0 0 3px rgba(201, 91, 91, 0.2);
+}
+
+@keyframes rating-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+.floating-rating-card {
+  animation: rating-float 3.2s ease-in-out infinite;
+  will-change: transform;
+}

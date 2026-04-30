@@ -337,12 +337,13 @@ export default function RoleOverviewPanel({
       id: "unit-1",
       title: "Unit 1",
       subtitle: "Learn mode",
+      topic: "Your home town or village",
       description: "Flexible practice. Open any part first, then move in your own order.",
       accent: "from-brand-500 to-brand-300",
       actionLabel: "Open Learn Hub",
       parts: [
         { id: 1, title: "Part 1", hint: "Short answers" },
-        { id: 2, title: "Part 2", hint: "Describe the prompt" },
+        { id: 2, title: "Part 2", hint: "Cue card / long turn" },
         { id: 3, title: "Part 3", hint: "Longer discussion" },
       ],
     },
@@ -350,13 +351,14 @@ export default function RoleOverviewPanel({
       id: "unit-2",
       title: "Unit 2",
       subtitle: "Test mode",
+      topic: "Your accommodation",
       description: "Strict practice. The order is locked and the coach is connected at test start.",
       accent: "from-amber-500 to-orange-300",
       actionLabel: "Open Test Hub",
       parts: [
-        { id: 1, title: "Part 1", hint: "Start of test" },
-        { id: 2, title: "Part 2", hint: "Middle of test" },
-        { id: 3, title: "Part 3", hint: "Final discussion" },
+        { id: 1, title: "Part 1", hint: "Quick warm-up" },
+        { id: 2, title: "Part 2", hint: "Cue card / 1-minute prep" },
+        { id: 3, title: "Part 3", hint: "Follow-up discussion" },
       ],
     },
   ];
@@ -388,7 +390,7 @@ export default function RoleOverviewPanel({
 
   const handleUnitPartClick = (unitIndex: number, partIndex: number) => {
     const targetMode = unitIndex === 1 ? "learn" : "test";
-    router.push(`/?mode=${targetMode}&unit=${unitIndex}&part=${partIndex}&autostart=1`);
+    router.push(`/onboarding?mode=${targetMode}&unit=${unitIndex}&part=${partIndex}&autostart=1&replay=1`);
   };
 
   const handleConnectCoachForTest = async () => {
@@ -414,8 +416,12 @@ export default function RoleOverviewPanel({
     setProfile((prev) => (prev ? { ...prev, coach_id: selectedCoachId } : prev));
     setNotice(selectedCoach ? `Connected to ${selectedCoach.email} for IELTS test.` : "Coach connected for IELTS test.");
     setConnectingCoach(false);
-    router.push("/?mode=test&unit=2&part=1&autostart=1");
+    router.push("/onboarding?mode=test&unit=2&part=1&autostart=1&replay=1");
   };
+
+  const [modalUnitIndex, setModalUnitIndex] = useState<number | null>(null);
+  const openUnitModal = (unitIndex: number) => setModalUnitIndex(unitIndex);
+  const closeUnitModal = () => setModalUnitIndex(null);
 
   if (loading) {
     return (
@@ -446,10 +452,11 @@ export default function RoleOverviewPanel({
 
             return (
             <div key={unit.id} className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
-              <div className="flex items-start justify-between gap-4">
+              <div onClick={() => openUnitModal(unitIndex)} className="flex items-start justify-between gap-4 cursor-pointer">
                 <div>
                   <p className="text-sm font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">{unit.subtitle}</p>
                   <h3 className="mt-1 text-xl font-semibold text-gray-800 dark:text-white/90">{unit.title}</h3>
+                  <p className="mt-2 text-sm font-medium text-brand-600 dark:text-brand-400">Topic: {unit.topic}</p>
                   <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{unit.description}</p>
                 </div>
                 <span className={`rounded-full bg-gradient-to-r ${unit.accent} px-3 py-1 text-xs font-semibold text-white`}>
@@ -470,29 +477,67 @@ export default function RoleOverviewPanel({
                 </div>
               </div>
 
+              <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                {unit.parts.map((part) => {
+                  const partProgress = getPartProgress(unitIndex, part.id);
+                  const isPartTwo = part.id === 2;
+                  return (
+                    <div
+                      key={`summary-${part.id}`}
+                      className={`rounded-2xl border px-3 py-2 ${
+                        isPartTwo
+                          ? "border-amber-200 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10"
+                          : "border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-white/[0.03]"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">
+                        <span>{part.title}</span>
+                        <span>{isPartTwo ? "Cue card" : partProgress >= 100 ? "Done" : "Open"}</span>
+                      </div>
+                      <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">{part.hint}</p>
+                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white dark:bg-gray-800">
+                        <div
+                          className={`h-full rounded-full bg-gradient-to-r ${isPartTwo ? "from-amber-500 to-orange-300" : unit.accent}`}
+                          style={{ width: `${partProgress}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
               <div className="mt-5 space-y-3">
                 {unit.parts.map((part) => {
                   const partProgress = getPartProgress(unitIndex, part.id);
+                  const isPartTwo = part.id === 2;
                   return (
                     <button
                       key={part.id}
                       type="button"
-                      onClick={() => handleUnitPartClick(unitIndex, part.id)}
-                      className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-left transition hover:-translate-y-[1px] hover:border-brand-300 hover:bg-brand-50 dark:border-gray-700 dark:bg-white/[0.03] dark:hover:bg-brand-500/10"
+                      onClick={(e) => { e.stopPropagation(); handleUnitPartClick(unitIndex, part.id); }}
+                      className={`w-full rounded-2xl border px-4 py-3 text-left transition hover:-translate-y-[1px] ${
+                        isPartTwo
+                          ? "border-amber-200 bg-amber-50 hover:border-amber-300 hover:bg-amber-100/70 dark:border-amber-500/30 dark:bg-amber-500/10 dark:hover:bg-amber-500/20"
+                          : "border-gray-200 bg-gray-50 hover:border-brand-300 hover:bg-brand-50 dark:border-gray-700 dark:bg-white/[0.03] dark:hover:bg-brand-500/10"
+                      }`}
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div>
                           <p className="text-sm font-semibold text-gray-800 dark:text-white/90">{part.title}</p>
                           <p className="text-xs text-gray-500 dark:text-gray-400">{part.hint}</p>
                         </div>
-                        <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                          {partProgress >= 100 ? "Done" : "Open"}
+                        <span className={`rounded-full px-3 py-1 text-xs font-medium ${
+                          isPartTwo
+                            ? "bg-white text-amber-700 dark:bg-amber-500/20 dark:text-amber-100"
+                            : "bg-white text-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                        }`}>
+                          {isPartTwo ? "1 min prep" : partProgress >= 100 ? "Done" : "Open"}
                         </span>
                       </div>
                       <div className="mt-3 flex items-center gap-3">
                         <div className="h-2 flex-1 overflow-hidden rounded-full bg-white dark:bg-gray-800">
                           <div
-                            className={`h-full rounded-full bg-gradient-to-r ${unit.accent}`}
+                            className={`h-full rounded-full bg-gradient-to-r ${isPartTwo ? "from-amber-500 to-orange-300" : unit.accent}`}
                             style={{ width: `${partProgress}%` }}
                           />
                         </div>
@@ -536,6 +581,91 @@ export default function RoleOverviewPanel({
             );
           })}
         </div>
+        {modalUnitIndex !== null && (() => {
+          const unitIndex = modalUnitIndex;
+          const unitCards2 = [
+            {
+              id: "unit-1",
+              title: "Unit 1",
+              subtitle: "Learn mode",
+              description: "Flexible practice. Open any part first, then move in your own order.",
+              accent: "from-brand-500 to-brand-300",
+              parts: [
+                { id: 1, title: "Part 1", hint: "Short answers" },
+                { id: 2, title: "Part 2", hint: "Describe the prompt" },
+                { id: 3, title: "Part 3", hint: "Longer discussion" },
+              ],
+            },
+            {
+              id: "unit-2",
+              title: "Unit 2",
+              subtitle: "Test mode",
+              description: "Strict practice. The order is locked and the coach is connected at test start.",
+              accent: "from-amber-500 to-orange-300",
+              parts: [
+                { id: 1, title: "Part 1", hint: "Start of test" },
+                { id: 2, title: "Part 2", hint: "Middle of test" },
+                { id: 3, title: "Part 3", hint: "Final discussion" },
+              ],
+            },
+          ];
+          const unit = unitCards2[unitIndex - 1];
+          if (!unit) return null;
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center">
+              <div className="absolute inset-0 bg-black/40" onClick={closeUnitModal} />
+              <div className="relative w-full max-w-2xl rounded-2xl bg-white p-6 shadow-lg dark:bg-gray-900">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{unit.title}</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{unit.subtitle}</p>
+                  </div>
+                  <button onClick={closeUnitModal} className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">✕</button>
+                </div>
+                <div className="mt-4 space-y-3">
+                  {unit.parts.map((part) => {
+                    const partProgress = getPartProgress(unitIndex, part.id);
+                    const isPartTwo = part.id === 2;
+                    return (
+                      <div
+                        key={part.id}
+                        className={`rounded-lg border p-4 ${
+                          isPartTwo
+                            ? "border-amber-200 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10"
+                            : "border-gray-100 bg-gray-50 dark:border-gray-700 dark:bg-gray-800"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-sm font-semibold text-gray-900 dark:text-white">{part.title}</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">{part.hint}</div>
+                          </div>
+                            <button
+                              onClick={() => { handleUnitPartClick(unitIndex, part.id); closeUnitModal(); }}
+                              className={`rounded-full px-3 py-1 text-xs font-medium text-white hover:shadow-md transition ${
+                                isPartTwo ? "bg-gradient-to-r from-amber-500 to-orange-300" : "bg-gradient-to-r from-brand-500 to-brand-300"
+                              }`}
+                            >
+                              {isPartTwo ? "Open cue card" : "Open chat"}
+                            </button>
+                        </div>
+                        <div className="mt-3 flex items-center gap-3">
+                          <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                            <div
+                              className={`h-full rounded-full bg-gradient-to-r ${isPartTwo ? "from-amber-500 to-orange-300" : "from-brand-500 to-brand-300"}`}
+                              style={{ width: `${partProgress}%` }}
+                            />
+                          </div>
+                          <div className="text-xs font-medium text-gray-600 dark:text-gray-300">{partProgress.toFixed(1)}%</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </section>
     );
   }
@@ -593,6 +723,52 @@ export default function RoleOverviewPanel({
           ))}
         </div>
       ) : null}
+
+      {/* Unit modal */}
+      {modalUnitIndex !== null && (() => {
+        const unit = unitCards[modalUnitIndex - 1] as any;
+        const unitIndex = modalUnitIndex;
+        if (!unit) return null;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/40" onClick={closeUnitModal} />
+            <div className="relative w-full max-w-2xl rounded-2xl bg-white p-6 shadow-lg">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">{unit.title}</h3>
+                  <p className="text-sm text-gray-500">{unit.subtitle}</p>
+                </div>
+                <button onClick={closeUnitModal} className="text-sm text-gray-500">Close</button>
+              </div>
+
+              <div className="mt-4 space-y-3">
+                {unit.parts.map((part: any) => {
+                  const partProgress = getPartProgress(unitIndex, part.id);
+                  return (
+                    <div key={part.id} className="rounded-lg border border-gray-100 p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-sm font-semibold text-gray-900">{part.title}</div>
+                          <div className="text-xs text-gray-500">{part.hint}</div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <button onClick={() => handleUnitPartClick(unitIndex, part.id)} className="rounded-full bg-brand-500 px-3 py-1 text-xs text-white">Open chat session</button>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex items-center gap-3">
+                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
+                          <div className="h-full rounded-full bg-gradient-to-r from-brand-500 to-brand-300" style={{ width: `${partProgress}%` }} />
+                        </div>
+                        <div className="text-xs text-gray-500">{partProgress.toFixed(1)}%</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {expectedRole === "user" ? (
         <div className="grid gap-4 xl:grid-cols-[1.3fr_0.9fr]">

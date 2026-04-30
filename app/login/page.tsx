@@ -35,7 +35,7 @@ const mapLoginErrorMessage = (rawMessage: string) => {
 const getDashboardPathForRole = (role: AppRole) => {
   if (role === "admin") return "/dashboard/admin";
   if (role === "guru") return "/dashboard/coach";
-  return "/dashboard/user";
+  return "/onboarding";
 };
 
 export default function LoginPage() {
@@ -122,6 +122,14 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center overflow-x-hidden bg-[url('https://cdn.flyonui.com/fy-assets/blocks/marketing-ui/auth/auth-background-2.png')] bg-cover bg-center bg-no-repeat px-4 py-10">
       <div className="relative w-full max-w-xl">
+        <div className="mb-5 rounded-3xl border border-white/70 bg-white/75 p-5 shadow-xl backdrop-blur-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[color:var(--primary)]">Built for IELTS speaking practice</p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-neutral-950">Build Speaking Skills That Shape Your Future</h1>
+          <p className="mt-3 text-sm leading-6 text-neutral-600">
+            Practice IELTS speaking with guided onboarding, topic-based Part 1 cards, time-boxed sessions, and rubric-aligned feedback.
+          </p>
+        </div>
+
         <svg
           className="pointer-events-none absolute inset-0 -z-10 h-full w-full scale-110 opacity-70"
           viewBox="0 0 612 697"
