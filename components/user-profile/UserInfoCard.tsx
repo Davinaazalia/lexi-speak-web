@@ -12,12 +12,14 @@ type UserInfoCardProps = {
   email: string;
   phone?: string;
   bio?: string;
+  affiliation?: string;
   onSave: (values: {
     firstName: string;
     lastName: string;
     email: string;
     phone: string;
     bio: string;
+    affiliation: string;
   }) => Promise<void>;
 };
 
@@ -27,6 +29,7 @@ export default function UserInfoCard({
   email,
   phone = "-",
   bio = "-",
+  affiliation = "-",
   onSave,
 }: UserInfoCardProps) {
   const { isOpen, openModal, closeModal } = useModal();
@@ -36,6 +39,7 @@ export default function UserInfoCard({
     email,
     phone,
     bio,
+    affiliation,
   });
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -47,8 +51,9 @@ export default function UserInfoCard({
       email,
       phone,
       bio,
+      affiliation,
     });
-  }, [firstName, lastName, email, phone, bio]);
+  }, [firstName, lastName, email, phone, bio, affiliation]);
 
   const handleInputChange = (key: keyof typeof formValues) => (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
@@ -67,6 +72,7 @@ export default function UserInfoCard({
         email: formValues.email,
         phone: formValues.phone,
         bio: formValues.bio,
+        affiliation: formValues.affiliation,
       });
 
       setStatus({ type: "success", message: "Profile berhasil diupdate." });
@@ -87,6 +93,7 @@ export default function UserInfoCard({
       email,
       phone,
       bio,
+      affiliation,
     });
     openModal();
   };
@@ -133,6 +140,15 @@ export default function UserInfoCard({
               </p>
               <p className="text-sm font-medium text-gray-800 dark:text-white/90">
                 {phone}
+              </p>
+            </div>
+
+            <div>
+              <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
+                Affiliation
+              </p>
+              <p className="text-sm font-medium text-gray-800 dark:text-white/90">
+                {affiliation}
               </p>
             </div>
 
@@ -218,6 +234,11 @@ export default function UserInfoCard({
                   <div className="col-span-2 lg:col-span-1">
                     <Label>Phone</Label>
                     <Input type="text" defaultValue={formValues.phone} onChange={handleInputChange("phone")} />
+                  </div>
+
+                  <div className="col-span-2 lg:col-span-1">
+                    <Label>Affiliation</Label>
+                    <Input type="text" defaultValue={formValues.affiliation} onChange={handleInputChange("affiliation")} />
                   </div>
 
                   <div className="col-span-2">

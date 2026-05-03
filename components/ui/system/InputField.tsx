@@ -12,7 +12,7 @@ type InputFieldProps = {
 export function InputField({
   value,
   onChange,
-  placeholder,
+  placeholder = "Type here...",
   className = "",
 }: InputFieldProps) {
   return (

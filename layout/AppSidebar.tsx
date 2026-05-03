@@ -43,6 +43,11 @@ const baseNavItems: NavItem[] = [
     path: "/dashboard/user?tab=test",
   },
   {
+    icon: <TableIcon />,
+    name: "Class",
+    path: "/dashboard/user/class",
+  },
+  {
     icon: <UserCircleIcon />,
     name: "Back to App",
     path: "/",
@@ -84,6 +89,11 @@ const coachNavItems: NavItem[] = [
       { name: "Overview", path: "/dashboard/coach", pro: false },
       { name: "Students Insight", path: "/dashboard/coach/students-insight", pro: false },
     ],
+  },
+  {
+    icon: <TableIcon />,
+    name: "Class",
+    path: "/dashboard/coach/class",
   },
   {
     icon: <UserCircleIcon />,

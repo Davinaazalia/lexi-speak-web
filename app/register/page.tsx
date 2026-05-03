@@ -18,6 +18,7 @@ export default function RegisterPage() {
   const [username, setUsername] = useState("");
   const [role, setRole] = useState<AppRole>("user");
   const [email, setEmail] = useState("");
+  const [affiliation, setAffiliation] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -54,7 +55,7 @@ export default function RegisterPage() {
       email,
       password,
       options: {
-        data: { username, role },
+        data: { username, role, affiliation },
         emailRedirectTo: `${window.location.origin}/login`,
       },
     });
@@ -209,6 +210,20 @@ export default function RegisterPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-slate-800" htmlFor="userAffiliation">
+                Affiliation
+              </label>
+              <input
+                type="text"
+                placeholder="Enter your Affiliation/Institute/University"
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-slate-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                id="userAffiliation"
+                value={affiliation}
+                onChange={(e) => setAffiliation(e.target.value)}
               />
             </div>
 

@@ -13,6 +13,7 @@ type ProfileRow = {
   email: string | null;
   role: AppRole | null;
   created_at: string | null;
+  affiliation: string | null;
 };
 
 type EditableProfile = {
@@ -21,6 +22,7 @@ type EditableProfile = {
   email: string;
   phone: string;
   bio: string;
+  affiliation: string;
 };
 
 type EditableAddress = {
@@ -80,6 +82,7 @@ export default function ProfilePage() {
     email: "-",
     phone: "-",
     bio: "-",
+    affiliation: "-",
   });
   const [editableAddress, setEditableAddress] = useState<EditableAddress>({
     country: "-",
@@ -112,6 +115,10 @@ export default function ProfilePage() {
         typeof user.user_metadata?.bio === "string" && user.user_metadata.bio.trim()
           ? user.user_metadata.bio
           : "-";
+      const metadataAffiliation =
+        typeof user.user_metadata?.affiliation === "string" && user.user_metadata.affiliation.trim()
+          ? user.user_metadata.affiliation
+          : "-";
       const metadataCountry =
         typeof user.user_metadata?.country === "string" && user.user_metadata.country.trim()
           ? user.user_metadata.country
@@ -135,6 +142,7 @@ export default function ProfilePage() {
         email: user.email ?? "-",
         phone: metadataPhone,
         bio: metadataBio,
+        affiliation: metadataAffiliation,
       });
 
       setEditableAddress({
@@ -146,11 +154,19 @@ export default function ProfilePage() {
 
       const { data } = await supabase
         .from("profiles")
-        .select("email, role, created_at")
+        .select("email, role, created_at, affiliation")
         .eq("id", user.id)
         .maybeSingle();
 
       setProfile((data as ProfileRow | null) ?? null);
+
+      // Override with database affiliation if it exists (database is source of truth)
+      if (data?.affiliation) {
+        setEditableProfile(prev => ({
+          ...prev,
+          affiliation: data.affiliation || "-",
+        }));
+      }
 
       setLoading(false);
     };
@@ -171,11 +187,22 @@ export default function ProfilePage() {
         name: fullName || trimmedFirstName,
         phone: values.phone.trim() || "-",
         bio: values.bio.trim() || "-",
+        affiliation: values.affiliation.trim() || "",
       },
     });
 
     if (error) {
       throw new Error(error.message);
+    }
+
+    // Update affiliation in profiles table
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .update({ affiliation: values.affiliation.trim() || null })
+      .eq("id", (await supabase.auth.getUser()).data.user?.id);
+
+    if (profileError) {
+      throw new Error(`Failed to update affiliation: ${profileError.message}`);
     }
 
     setDisplayName(fullName || trimmedFirstName || "User");
@@ -185,6 +212,7 @@ export default function ProfilePage() {
       email: values.email,
       phone: values.phone.trim() || "-",
       bio: values.bio.trim() || "-",
+      affiliation: values.affiliation.trim() || "-",
     });
   };
 
@@ -237,6 +265,7 @@ export default function ProfilePage() {
           email={editableProfile.email || profile?.email || "-"}
           phone={editableProfile.phone}
           bio={editableProfile.bio}
+          affiliation={editableProfile.affiliation}
           onSave={handleSaveUserInfo}
         />
         <UserAddressCard
