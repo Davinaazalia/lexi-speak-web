@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import TextButton from "@/components/ui/system/TextButton";
 import { InputField } from "@/components/ui/system/InputField";
 import { Toggle } from "@/components/ui/system/Toggle";
+import { generateTopicCode } from "@/lib/generateTopicCode";
 import {
     NumberCircleOneIcon,
     NumberCircleTwoIcon,
@@ -20,6 +21,7 @@ import {
     TrashIcon,
 } from "@phosphor-icons/react";
 import { title } from "process";
+import { CATEGORY_MAP } from "@/lib/categoryMap";
 
 const numberIcons = [
     NumberCircleOneIcon,
@@ -35,11 +37,16 @@ const numberIcons = [
 
 type Question = {
     id: string;
+    topic_code: string;
     title: string;
     part: number;
     prompt: string | null;
     is_active: boolean;
+    session: "practice" | "test";
+    category: string;
     created_at: string | null;
+    seq: number;
+    category_code: string;
 };
 
 type Detail = {
@@ -47,6 +54,7 @@ type Detail = {
     type: "question" | "bullet";
     content: string;
     order_index: number;
+    rubric?: string | null;
 };
 
 type QuestionBankProps = {
@@ -78,6 +86,8 @@ export default function QuestionBank({
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const [editTopic, setEditTopic] = useState<Question | null>(null);
+    const [editSession, setEditSession] = useState<"practice" | "test">("practice");
+    const [editCategory, setEditCategory] = useState("");
     const [editTitle, setEditTitle] = useState("");
     const [editPrompt, setEditPrompt] = useState("");
     const [editPart, setEditPart] = useState<number>(1);
@@ -87,12 +97,14 @@ export default function QuestionBank({
     const [isCreateOpen, setIsCreateOpen] = useState(false);
 
     const [newPart, setNewPart] = useState<number>(1);
+    const [newCategory, setNewCategory] = useState("");
+    const [newSession, setNewSession] = useState<"practice" | "test">("practice");
     const [newTitle, setNewTitle] = useState("");
     const [newPrompt, setNewPrompt] = useState("");
     const [newActive, setNewActive] = useState(true);
 
     const [newDetails, setNewDetails] = useState<
-        { type: "question" | "bullet"; content: string }[]
+        { type: "question" | "bullet"; content: string; rubric?: string | null }[]
     >([]);
 
     useEffect(() => {
@@ -125,7 +137,7 @@ export default function QuestionBank({
 
             const { data, error } = await supabase
                 .from("topics")
-                .select("id, part, title, prompt, is_active, created_at")
+                .select("id, topic_code, category, session, part, title, prompt, is_active, created_at")
                 .order("created_at", { ascending: false });
 
             if (error) {
@@ -248,6 +260,8 @@ export default function QuestionBank({
                         <table className="min-w-full">
                             <thead>
                                 <tr className="border-b border-gray-100 dark:border-gray-800">
+                                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-500">Code</th>
+                                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-500">Category</th>
                                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500">Part</th>
                                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500">Title</th>
                                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500">Prompt</th>
@@ -278,9 +292,17 @@ export default function QuestionBank({
                                             className={`
             cursor-pointer border-b last:border-0
             hover:bg-gray-50 dark:hover:bg-white/5
-            ${selectedTopicId === row.id ? "bg-brand-50" : ""}
+            ${selectedTopicId === row.id && !isModalOpen ? "bg-brand-50" : ""}
           `}
                                         >
+                                            <td className="px-5 py-4 text-sm font-medium">
+                                                {row.topic_code}
+                                            </td>
+
+                                            <td className="px-5 py-4 text-sm font-medium">
+                                                {row.category}
+                                            </td>
+
                                             <td className="px-5 py-4 text-sm font-medium">
                                                 Part {row.part}
                                             </td>
@@ -348,7 +370,7 @@ export default function QuestionBank({
                                                     }}
                                                     className="text-[var(--color-error-text)] hover:text-[var(--color-error-bg)]"
                                                 >
-                                                    <TrashIcon size={18} weight="fill"/>
+                                                    <TrashIcon size={18} weight="fill" />
                                                 </button>
                                             </td>
                                         </tr>
@@ -406,7 +428,7 @@ export default function QuestionBank({
                 ) : null}
             </div>
             {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/40">
                     <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-lg">
 
                         {/* HEADER */}
@@ -488,6 +510,8 @@ export default function QuestionBank({
 
                                     // 🔥 open edit modal
                                     setEditTopic(selectedTopic);
+                                    setEditCategory(selectedTopic.category);
+                                    setEditSession(selectedTopic.session);
                                     setEditTitle(selectedTopic.title);
                                     setEditPrompt(selectedTopic.prompt || "");
                                     setEditPart(selectedTopic.part);
@@ -516,10 +540,42 @@ export default function QuestionBank({
                 </div>
             )}
             {editTopic && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/40">
                     <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-lg">
 
                         <h3 className="text-lg font-semibold mb-4">Edit Topic</h3>
+
+                        {/* SESSION */}
+                        <div className="w-full p-3 mb-3 text-primary outline-dashed outline-[var(--primary)] rounded-2xl">
+                            <select
+                                value={editSession}
+                                onChange={(e) => setEditSession(e.target.value as "practice" | "test")}
+                                className="w-full outline-none bg-transparent"
+                            >
+                                <option value={"test"}>TEST</option>
+                                <option value={"practice"}>PRACTICE</option>
+                            </select>
+                        </div>
+
+                        {/* Category */}
+                        <div className="w-full p-3 mb-3 text-primary outline-dashed outline-[var(--primary)] rounded-2xl">
+                            <select
+                                value={editCategory}
+                                onChange={(e) => setEditCategory(e.target.value)}
+                                className="w-full outline-none bg-transparent"
+                            >
+                                <option value={"music"}>Music</option>
+                                <option value={"identity"}>Identity</option>
+                                <option value={"education"}>Education</option>
+                                <option value={"culinary"}>Culinary</option>
+                                <option value={"travel"}>Travel</option>
+                                <option value={"art"}>Art</option>
+                                <option value={"sports"}>Sports</option>
+                                <option value={"technology"}>Technology</option>
+                                <option value={"health"}>Health</option>
+                                <option value={"business"}>Business</option>
+                            </select>
+                        </div>
 
                         {/* PART */}
                         <div className="w-full p-3 mb-3 text-primary outline-dashed outline-[var(--primary)] rounded-2xl">
@@ -570,7 +626,7 @@ export default function QuestionBank({
                         {/* DETAILS */}
                         <div className="space-y-2 mb-4">
                             {editDetails.map((d, i) => (
-                                <div key={d.id ?? i} className="flex gap-2">
+                                <div key={d.id ?? i} className="flex gap-2 items-start">
 
                                     {/* TYPE */}
                                     <div className="mx-auto p-3 text-primary outline-dashed outline-[var(--primary)] rounded-2xl flex items-center">
@@ -588,17 +644,31 @@ export default function QuestionBank({
                                         </select>
                                     </div>
 
-                                    {/* CONTENT */}
-                                    <InputField
-                                        className="flex-1"
-                                        value={d.content}
-                                        onChange={(v) => {
-                                            const updated = [...editDetails];
-                                            updated[i].content = v;
-                                            setEditDetails(updated);
-                                        }}
-                                        placeholder="Content"
-                                    />
+                                    <div className="flex flex-col flex-1 gap-2">
+
+                                        {/* CONTENT */}
+                                        <InputField
+                                            value={d.content}
+                                            onChange={(v) => {
+                                                const updated = [...editDetails];
+                                                updated[i].content = v;
+                                                setEditDetails(updated);
+                                            }}
+                                            placeholder="Content"
+                                        />
+
+                                        {/* RUBRIC */}
+                                        <InputField
+                                            value={d.rubric || ""}
+                                            onChange={(v) => {
+                                                const updated = [...editDetails];
+                                                updated[i].rubric = v;
+                                                setEditDetails(updated);
+                                            }}
+                                            placeholder="Rubric"
+                                        />
+                                    </div>
+
 
                                     {/* DELETE */}
                                     <button
@@ -650,9 +720,36 @@ export default function QuestionBank({
                             <TextButton
                                 variant="primary"
                                 onClick={async () => {
+                                    if (!editTopic) return;
+
+                                    let topicCode = editTopic.topic_code;
+                                    let seq = editTopic.seq;
+                                    let categoryCode = editTopic.category_code;
+
+                                    // 🔥 check if category or session changed
+                                    const changed =
+                                        editCategory !== editTopic.category ||
+                                        editSession !== editTopic.session;
+
+                                    if (changed) {
+                                        const result = await generateTopicCode({
+                                            session: editSession as "practice" | "test",
+                                            category: editCategory as any,
+                                        });
+
+                                        topicCode = result.topicCode;
+                                        seq = result.seq;
+                                        categoryCode = result.categoryCode;
+                                    }
+
                                     const { error } = await supabase
                                         .from("topics")
                                         .update({
+                                            category: editCategory,
+                                            session: editSession,
+                                            category_code: categoryCode,
+                                            seq,
+                                            topic_code: topicCode,
                                             part: editPart,
                                             title: editTitle,
                                             prompt: editPrompt,
@@ -665,27 +762,34 @@ export default function QuestionBank({
                                         return;
                                     }
 
+                                    // 🔥 delete old details
                                     await supabase
                                         .from("topic_details")
                                         .delete()
                                         .eq("topic_id", editTopic.id);
 
-                                    if (editDetails.length > 0) {
-                                        await supabase.from("topic_details").insert(
-                                            editDetails.map((d) => ({
-                                                topic_id: editTopic.id,
-                                                type: d.type,
-                                                content: d.content,
-                                                order_index: d.order_index, // 🔥 USE EXISTING ORDER
-                                            }))
-                                        );
-                                    }
+                                    // 🔥 insert new ones
+                                    await supabase.from("topic_details").insert(
+                                        editDetails.map((d, i) => ({
+                                            topic_id: editTopic.id,
+                                            type: d.type,
+                                            content: d.content,
+                                            rubric: d.rubric || null,
+                                            order_index: i,
+                                        }))
+                                    );
 
+                                    // 🔥 update local state
                                     setRows((prev) =>
                                         prev.map((r) =>
                                             r.id === editTopic.id
                                                 ? {
                                                     ...r,
+                                                    category: editCategory,
+                                                    session: editSession,
+                                                    category_code: categoryCode,
+                                                    seq,
+                                                    topic_code: topicCode,
                                                     part: editPart,
                                                     title: editTitle,
                                                     prompt: editPrompt,
@@ -695,7 +799,6 @@ export default function QuestionBank({
                                         )
                                     );
 
-                                    // 🔥 5. reset
                                     setEditTopic(null);
                                     setEditDetails([]);
                                 }}
@@ -710,12 +813,46 @@ export default function QuestionBank({
 
             {
                 isCreateOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                    <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/40">
                         <div
                             className="w-full max-w-lg rounded-2xl bg-white p-6"
                             onClick={(e) => e.stopPropagation()}
                         >
                             <h3 className="text-lg font-semibold mb-4">Create Topic</h3>
+
+                            {/* SESSION */}
+                            <div className="w-full p-3 mb-3 text-primary outline-dashed outline-[var(--primary)] rounded-2xl">
+                                <select
+                                    value={newSession}
+                                    onChange={(e) => setNewSession(e.target.value as "practice" | "test")}
+                                    className="w-full outline-none bg-transparent"
+                                >
+                                    <option value="">Select Session</option>
+                                    <option value="test">TEST</option>
+                                    <option value="practice">PRACTICE</option>
+                                </select>
+                            </div>
+
+                            {/* CATEGORY */}
+                            <div className="w-full p-3 mb-3 text-primary outline-dashed outline-[var(--primary)] rounded-2xl">
+                                <select
+                                    value={newCategory}
+                                    onChange={(e) => setNewCategory(e.target.value)}
+                                    className="w-full outline-none bg-transparent"
+                                >
+                                    <option value="">Select Category</option>
+                                    <option value="music">Music</option>
+                                    <option value="identity">Identity</option>
+                                    <option value="education">Education</option>
+                                    <option value="culinary">Culinary</option>
+                                    <option value="travel">Travel</option>
+                                    <option value="art">Art</option>
+                                    <option value="sports">Sports</option>
+                                    <option value="technology">Technology</option>
+                                    <option value="health">Health</option>
+                                    <option value="business">Business</option>
+                                </select>
+                            </div>
 
                             {/* PART */}
                             <div className="w-full p-3 mb-3 text-primary outline-dashed outline-[var(--primary)] rounded-2xl">
@@ -724,6 +861,7 @@ export default function QuestionBank({
                                     onChange={(e) => setNewPart(Number(e.target.value))}
                                     className="w-full outline-none bg-transparent"
                                 >
+                                    <option value="">Select Part</option>
                                     <option value={1}>Part 1</option>
                                     <option value={2}>Part 2</option>
                                     <option value={3}>Part 3</option>
@@ -764,7 +902,7 @@ export default function QuestionBank({
                             {/* DETAILS */}
                             <div className="space-y-2 mb-4">
                                 {newDetails.map((d, i) => (
-                                    <div key={i} className="flex gap-2">
+                                    <div key={i} className="flex gap-2 items-start">
                                         <div className="mx-auto p-3 text-primary outline-dashed outline-[var(--primary)] rounded-2xl flex items-center">
                                             <select
                                                 value={d.type}
@@ -773,23 +911,34 @@ export default function QuestionBank({
                                                     updated[i].type = e.target.value as any;
                                                     setNewDetails(updated);
                                                 }}
-                                                className="bg-transparent outline-none w-full"
+                                                className="bg-transparent outline-none w-full max-h-fit"
                                             >
                                                 <option value="question">Question</option>
                                                 <option value="bullet">Bullet</option>
                                             </select>
                                         </div>
 
-                                        <InputField
-                                            className="flex-1"
-                                            value={d.content}
-                                            onChange={(v) => {
-                                                const updated = [...newDetails];
-                                                updated[i].content = v;
-                                                setNewDetails(updated);
-                                            }}
-                                            placeholder="Content"
-                                        />
+                                        <div className="flex flex-col flex-1 gap-2">
+                                            <InputField
+                                                value={d.content}
+                                                onChange={(v) => {
+                                                    const updated = [...newDetails];
+                                                    updated[i].content = v;
+                                                    setNewDetails(updated);
+                                                }}
+                                                placeholder="Content"
+                                            />
+                                            <InputField
+                                                value={d.rubric || ""}
+                                                onChange={(v) => {
+                                                    const updated = [...newDetails];
+                                                    updated[i].rubric = v;
+                                                    setNewDetails(updated);
+                                                }}
+                                                placeholder="Rubric"
+                                            />
+                                        </div>
+
 
                                         <button
                                             onClick={() =>
@@ -832,6 +981,16 @@ export default function QuestionBank({
                                 <TextButton
                                     variant="primary"
                                     onClick={async () => {
+                                        if (!newCategory || !newSession) {
+                                            alert("Please select category and session");
+                                            return;
+                                        }
+
+                                        const { topicCode, seq, categoryCode } = await generateTopicCode({
+                                            session: newSession as "practice" | "test",
+                                            category: newCategory as any,
+                                        });
+
                                         const { data: topic, error } = await supabase
                                             .from("topics")
                                             .insert({
@@ -839,6 +998,11 @@ export default function QuestionBank({
                                                 title: newTitle,
                                                 prompt: newPrompt,
                                                 is_active: newActive,
+                                                category: newCategory,
+                                                session: newSession,
+                                                category_code: categoryCode,
+                                                seq,
+                                                topic_code: topicCode,
                                             })
                                             .select()
                                             .single();
@@ -855,6 +1019,7 @@ export default function QuestionBank({
                                                     type: d.type,
                                                     content: d.content,
                                                     order_index: i,
+                                                    rubric: d.rubric || null,
                                                 }))
                                             );
                                         }
@@ -865,6 +1030,8 @@ export default function QuestionBank({
                                         setNewPrompt("");
                                         setNewPart(1);
                                         setNewActive(true);
+                                        setNewCategory("");
+                                        setNewSession("practice");
                                         setNewDetails([]);
                                     }}
                                 >
