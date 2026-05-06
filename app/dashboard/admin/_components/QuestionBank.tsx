@@ -537,71 +537,75 @@ export default function QuestionBank({
                                                         : "-"}
                                                 </td>
 
-                                                <td className="px-5 py-4 text-sm flex gap-2">
+                                                <td className="px-5 py-4 text-sm">
+                                                    <div className="flex items-center gap-2">
 
-                                                    {/* EDIT */}
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
+                                                        {/* EDIT */}
+                                                        <button
+                                                            onClick={(e) => {
 
-                                                            router.push(
-                                                                `/dashboard/admin/question-bank/${row.unit_id}/edit`
-                                                            )
-                                                        }}
-                                                        className="text-[var(--color-warning-text)] hover:text-[var(--color-warning-bg)]"
-                                                    >
-                                                        <PencilLineIcon
-                                                            size={18}
-                                                            weight="fill"
-                                                        />
-                                                    </button>
+                                                                e.stopPropagation();
 
-                                                    {/* DELETE SESSION */}
-                                                    <button
-                                                        onClick={async (e) => {
-
-                                                            e.stopPropagation();
-
-                                                            const confirmDelete =
-                                                                confirm(
-                                                                    "Delete this entire session?"
+                                                                router.push(
+                                                                    `/dashboard/admin/question-bank/${row.unit_id}/edit`
                                                                 );
+                                                            }}
+                                                            className="text-[var(--color-warning-text)] hover:text-[var(--color-warning-bg)]"
+                                                        >
+                                                            <PencilLineIcon
+                                                                size={18}
+                                                                weight="fill"
+                                                            />
+                                                        </button>
 
-                                                            if (!confirmDelete)
-                                                                return;
+                                                        {/* DELETE SESSION */}
+                                                        <button
+                                                            onClick={async (e) => {
 
-                                                            const { error } =
-                                                                await supabase
-                                                                    .from("session_units")
-                                                                    .delete()
-                                                                    .eq(
-                                                                        "id",
-                                                                        row.unit_id
+                                                                e.stopPropagation();
+
+                                                                const confirmDelete =
+                                                                    confirm(
+                                                                        "Delete this entire session?"
                                                                     );
 
-                                                            if (!error) {
+                                                                if (!confirmDelete)
+                                                                    return;
 
-                                                                setRows((prev) =>
-                                                                    prev.filter(
-                                                                        (r) =>
-                                                                            r.unit_id !==
+                                                                const { error } =
+                                                                    await supabase
+                                                                        .from("session_units")
+                                                                        .delete()
+                                                                        .eq(
+                                                                            "id",
                                                                             row.unit_id
-                                                                    )
-                                                                );
+                                                                        );
 
-                                                            } else {
+                                                                if (!error) {
 
-                                                                alert(error.message);
-                                                            }
-                                                        }}
-                                                        className="text-[var(--color-error-text)] hover:text-[var(--color-error-bg)]"
-                                                    >
-                                                        <TrashIcon
-                                                            size={18}
-                                                            weight="fill"
-                                                        />
-                                                    </button>
+                                                                    setRows((prev) =>
+                                                                        prev.filter(
+                                                                            (r) =>
+                                                                                r.unit_id !==
+                                                                                row.unit_id
+                                                                        )
+                                                                    );
 
+                                                                    setCurrentPage(1);
+
+                                                                } else {
+
+                                                                    alert(error.message);
+                                                                }
+                                                            }}
+                                                            className="text-[var(--color-error-text)] hover:text-[var(--color-error-bg)]"
+                                                        >
+                                                            <TrashIcon
+                                                                size={18}
+                                                                weight="fill"
+                                                            />
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))
@@ -619,12 +623,10 @@ export default function QuestionBank({
                                                     )
                                                 }
 
-                                                className="
-    cursor-pointer
-    border-b last:border-0
-    hover:bg-gray-50
-    dark:hover:bg-white/5
-  "
+                                                className={`
+        cursor-pointer border-b last:border-0
+        hover:bg-gray-50 dark:hover:bg-white/5
+      `}
                                             >
 
                                                 <td className="px-5 py-4 text-sm font-medium">
@@ -674,63 +676,73 @@ export default function QuestionBank({
                                                         : "-"}
                                                 </td>
 
-                                                <td className="px-5 py-4 text-sm flex gap-2">
+                                                <td className="px-5 py-4 text-sm">
 
-                                                    {/* EDIT */}
-                                                    <button
-                                                        onClick={() =>
-                                                            router.push(
-                                                                `/dashboard/admin/question-bank/${row.id}/edit`
-                                                            )
-                                                        }
-                                                        className="text-[var(--color-warning-text)] hover:text-[var(--color-warning-bg)]"
-                                                    >
-                                                        <PencilLineIcon
-                                                            size={18}
-                                                            weight="fill"
-                                                        />
-                                                    </button>
+                                                    <div className="flex items-center gap-2">
 
-                                                    {/* DELETE */}
-                                                    <button
-                                                        onClick={async () => {
+                                                        {/* EDIT */}
+                                                        <button
+                                                            onClick={(e) => {
 
-                                                            const confirmDelete =
-                                                                confirm(
-                                                                    "Delete this session?"
+                                                                e.stopPropagation();
+
+                                                                router.push(
+                                                                    `/dashboard/admin/question-bank/${row.id}/edit`
                                                                 );
+                                                            }}
+                                                            className="text-[var(--color-warning-text)] hover:text-[var(--color-warning-bg)]"
+                                                        >
+                                                            <PencilLineIcon
+                                                                size={18}
+                                                                weight="fill"
+                                                            />
+                                                        </button>
 
-                                                            if (!confirmDelete)
-                                                                return;
+                                                        {/* DELETE */}
+                                                        <button
+                                                            onClick={async (e) => {
 
-                                                            const { error } =
-                                                                await supabase
-                                                                    .from("session_units")
-                                                                    .delete()
-                                                                    .eq("id", row.id);
+                                                                e.stopPropagation();
 
-                                                            if (!error) {
+                                                                const confirmDelete =
+                                                                    confirm(
+                                                                        "Delete this session?"
+                                                                    );
 
-                                                                setUnitRows((prev) =>
-                                                                    prev.filter(
-                                                                        (r) =>
-                                                                            r.id !== row.id
-                                                                    )
-                                                                );
+                                                                if (!confirmDelete)
+                                                                    return;
 
-                                                            } else {
+                                                                const { error } =
+                                                                    await supabase
+                                                                        .from("session_units")
+                                                                        .delete()
+                                                                        .eq("id", row.id);
 
-                                                                alert(error.message);
-                                                            }
-                                                        }}
-                                                        className="text-[var(--color-error-text)] hover:text-[var(--color-error-bg)]"
-                                                    >
-                                                        <TrashIcon
-                                                            size={18}
-                                                            weight="fill"
-                                                        />
-                                                    </button>
+                                                                if (!error) {
 
+                                                                    setUnitRows((prev) =>
+                                                                        prev.filter(
+                                                                            (r) =>
+                                                                                r.id !== row.id
+                                                                        )
+                                                                    );
+
+                                                                    setCurrentPage(1);
+
+
+                                                                } else {
+
+                                                                    alert(error.message);
+                                                                }
+                                                            }}
+                                                            className="text-[var(--color-error-text)] hover:text-[var(--color-error-bg)]"
+                                                        >
+                                                            <TrashIcon
+                                                                size={18}
+                                                                weight="fill"
+                                                            />
+                                                        </button>
+                                                    </div>
                                                 </td>
 
                                             </tr>

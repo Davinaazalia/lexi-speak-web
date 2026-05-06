@@ -1,6 +1,7 @@
 "use client";
 
 import { TextInput } from "./TextInput";
+import { useEffect, useRef } from "react";
 
 type InputFieldProps = {
   value: string;
@@ -21,6 +22,25 @@ export function InputField({
   multiline = false,
   rows = 4,
 }: InputFieldProps) {
+  const textareaRef =
+    useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+
+    if (!multiline) return;
+
+    const textarea =
+      textareaRef.current;
+
+    if (!textarea) return;
+
+    textarea.style.height = "auto";
+
+    textarea.style.height =
+      `${textarea.scrollHeight}px`;
+
+  }, [value, multiline]);
+
   return (
     <div
       className={`
@@ -33,6 +53,7 @@ export function InputField({
     >
       {multiline ? (
         <textarea
+          ref={textareaRef}
           rows={rows}
           value={value}
           onInput={(e) => {

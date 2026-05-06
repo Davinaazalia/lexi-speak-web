@@ -335,6 +335,18 @@
   color: var(--color-error-text);
 }
 
+.text-warning {
+  color: var(--color-warning-text);
+}
+
+.text-error {
+  color: var(--color-error-text);
+}
+
+.text-success {
+  color: var(--color-success-text);
+}
+
 .text-secondary {
   color: var(--text-secondary);
 }
