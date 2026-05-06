@@ -7,6 +7,9 @@ type InputFieldProps = {
   onChange: (v: string) => void;
   placeholder?: string;
   className?: string;
+
+  multiline?: boolean;
+  rows?: number;
 };
 
 export function InputField({
@@ -14,6 +17,9 @@ export function InputField({
   onChange,
   placeholder,
   className = "",
+
+  multiline = false,
+  rows = 4,
 }: InputFieldProps) {
   return (
     <div
@@ -25,11 +31,34 @@ export function InputField({
         ${className}
       `}
     >
-      <TextInput
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-      />
+      {multiline ? (
+        <textarea
+          rows={rows}
+          value={value}
+          onInput={(e) => {
+            const target =
+              e.target as HTMLTextAreaElement;
+
+            target.style.height = "auto";
+            target.style.height =
+              `${target.scrollHeight}px`;
+          }}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="
+    w-full bg-transparent outline-none
+    resize-none text-primary text-base font-medium
+    placeholder:text-primary/50
+    overflow-hidden
+  "
+        />
+      ) : (
+        <TextInput
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+        />
+      )}
     </div>
   );
 }

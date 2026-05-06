@@ -1,59 +1,70 @@
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
 
-export async function exportToPDF(id: string) {
-  const element = document.getElementById(id);
-  if (!element) return;
+export function exportToPDF({
+  summary,
+  activity,
+  scores,
+}: {
+  summary: any;
+  activity: any[];
+  scores: any[];
+}) {
+  const pdf = new jsPDF();
 
-  // 🔥 inject safe CSS override
-  const style = document.createElement("style");
-  style.innerHTML = `
-    * {
-      color: #000 !important;
-      border-color: #ccc !important;
-      background-image: none !important;
-      box-shadow: none !important;
+  let y = 10;
+
+  // 🔥 TITLE
+  pdf.setFontSize(16);
+  pdf.text("Admin Report", 10, y);
+
+  y += 10;
+
+  // 🔥 SUMMARY
+  pdf.setFontSize(12);
+  pdf.text(`Total Users: ${summary?.totalUsers ?? "-"}`, 10, y);
+  y += 6;
+  pdf.text(`Total Attempts: ${summary?.totalAttempts ?? "-"}`, 10, y);
+  y += 6;
+  pdf.text(`Average Score: ${summary?.avgScore ?? "-"}`, 10, y);
+
+  y += 10;
+
+  // 🔥 ACTIVITY SECTION
+  pdf.setFontSize(14);
+  pdf.text("Activity", 10, y);
+
+  y += 6;
+
+  pdf.setFontSize(10);
+  activity.forEach((a) => {
+    pdf.text(`${a.date}: ${a.count}`, 10, y);
+    y += 5;
+
+    // page break
+    if (y > 280) {
+      pdf.addPage();
+      y = 10;
     }
-    body, div, section {
-      background: #fff !important;
+  });
+
+  y += 5;
+
+  // 🔥 SCORE SECTION
+  pdf.setFontSize(14);
+  pdf.text("Score Trend", 10, y);
+
+  y += 6;
+
+  pdf.setFontSize(10);
+  scores.forEach((s) => {
+    pdf.text(`${s.date}: ${s.avg.toFixed(2)}`, 10, y);
+    y += 5;
+
+    if (y > 280) {
+      pdf.addPage();
+      y = 10;
     }
-  `;
-  document.head.appendChild(style);
+  });
 
-  try {
-    const canvas = await html2canvas(element, {
-      scale: 2,
-      backgroundColor: "#ffffff", // 🔥 important
-      useCORS: true,
-    });
-
-    const imgData = canvas.toDataURL("image/png");
-
-    const pdf = new jsPDF({
-      unit: "px",
-      format: "a4",
-    });
-
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-
-    const ratio = Math.min(
-      pageWidth / canvas.width,
-      pageHeight / canvas.height
-    );
-
-    pdf.addImage(
-      imgData,
-      "PNG",
-      0,
-      0,
-      canvas.width * ratio,
-      canvas.height * ratio
-    );
-
-    pdf.save("report.pdf");
-  } finally {
-    // 🔥 cleanup
-    document.head.removeChild(style);
-  }
+  pdf.save("report.pdf");
 }

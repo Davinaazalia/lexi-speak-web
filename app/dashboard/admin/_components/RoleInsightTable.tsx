@@ -12,6 +12,7 @@ type ProfileRow = {
   email: string;
   role: AppRole;
   created_at: string | null;
+  affiliation?: string | null;
 };
 
 type RoleInsightTableProps = {
@@ -99,6 +100,7 @@ export default function RoleInsightTable({
         email,
         role,
         created_at,
+        affiliation,
         class_members (
           class_id,
           classes (
@@ -468,6 +470,9 @@ export default function RoleInsightTable({
                   <th className="px-5 py-3 text-left text-xs font-medium text-gray-500">
                     Class
                   </th>
+                  <th className="px-5 py-3 text-left text-xs font-medium text-gray-500">
+                    Affiliation
+                  </th>
                   <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Created</th>
                 </tr>
               </thead>
@@ -491,6 +496,9 @@ export default function RoleInsightTable({
                       <td className="px-5 py-4 text-sm text-gray-700 dark:text-gray-300">{roleLabel(row.role)}</td>
                       <td className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400">
                         {getClassName(row)}
+                      </td>
+                      <td className="px-5 py-4 text-sm text-gray-500">
+                        {row.affiliation || "-"} {/* 🔥 */}
                       </td>
                       <td className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400">
                         {row.created_at ? new Date(row.created_at).toLocaleDateString() : "-"}
