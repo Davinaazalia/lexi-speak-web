@@ -843,6 +843,7 @@ export default function Home() {
   const [sessionTimeLeft, setSessionTimeLeft] = useState(SESSION_TIME_LIMIT_SECONDS);
   const [selectedPart1TopicIndex, setSelectedPart1TopicIndex] = useState<number | null>(null);
   const [showTopicSelector, setShowTopicSelector] = useState(false);
+  const [part1IntroShown, setPart1IntroShown] = useState(false);
   const [cueCardView, setCueCardView] = useState<"intro" | "transition" | "card">("intro");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isResponseTimerRunning, setIsResponseTimerRunning] = useState(false);
@@ -1003,7 +1004,8 @@ Describe a topic that feels useful for your current level (${speakingLevel}) and
   const activeSpeakingCard = cardsInUse[currentCardIndex];
   const selectedPart1Topic = selectedPart1TopicIndex !== null ? PART_1_TOPICS[selectedPart1TopicIndex] : null;
   const isCueCardPart = requestedPart === 2;
-  const isOnboardingChatVisible = !(activeStep === 5 && isSpeakingSessionActive);
+  const isPart1LearnMode = requestedPart === 1 && practiceMode === "learn";
+  const isOnboardingChatVisible = isPart1LearnMode || !(activeStep === 5 && isSpeakingSessionActive);
 
   useEffect(() => {
     if (!autoStart || autoStartRef.current) return;
@@ -1617,11 +1619,13 @@ Describe a topic that feels useful for your current level (${speakingLevel}) and
   const startSpeaking = () => {
     const chosen = speakingCards[0];
     if (!chosen) return;
+    const isPart1Learn = requestedPart === 1 && practiceMode === "learn";
     if (requestedPart === 2) {
       setCueCardView("intro");
     }
     setSpeechError("");
     setIsSpeakingSessionActive(true);
+    setPart1IntroShown(isPart1Learn);
     setSessionCompleted(false);
     // pick the chosen card for this session
     setSelectedSpeakingCards([chosen]);
@@ -1637,6 +1641,11 @@ Describe a topic that feels useful for your current level (${speakingLevel}) and
     keepTryingSentRef.current = false;
     manualStopRecordingRef.current = false;
     adaptiveNudgeSentRef.current = false;
+
+    if (isPart1Learn) {
+      return;
+    }
+
     if (requestedPart !== 2) {
       speakCardText(chosen.promptText);
     }
@@ -1800,6 +1809,169 @@ Describe a topic that feels useful for your current level (${speakingLevel}) and
           Preparing your onboarding...
         </div>
       </main>
+    );
+  }
+
+  if (isPart1LearnMode && activeStep === 5) {
+    return (
+      <main className="min-h-screen w-full bg-[#FFFFF] px-6 py-6 sm:px-10">
+        <section className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-7xl flex-col">
+          <div className="flex items-center justify-between rounded-xl bg-white/80 px-2 py-2 shadow-sm">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSpeakingSessionActive(false);
+                  setPart1IntroShown(false);
+                  setActiveStep(4);
+                }}
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-600"
+              >
+                ←
+              </button>
+              <div className="text-base font-semibold text-neutral-900">Practice Unit {requestedUnit} - Part 1 (Introduction)</div>
+            </div>
+            <div className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-sm font-semibold text-neutral-800">
+              {String(Math.floor(sessionTimeLeft / 3600)).padStart(2, "0")}:
+              {String(Math.floor((sessionTimeLeft % 3600) / 60)).padStart(2, "0")}:
+              {String(sessionTimeLeft % 60).padStart(2, "0")}
+            </div>
+          </div>
+
+    <div className="relative mt-4 flex-1 overflow-y-auto pb-6">
+
+      {isSpeakingSessionActive && part1IntroShown ? (
+        <div className="relative space-y-3">
+
+          <div className="relative flex items-center gap-2 pl-1 text-rose-500">
+            <img src="/logo.png" className="h-6 w-6 rounded-full object-cover" />
+            <span className="text-lg font-semibold text-[#C95B5B]">Lexi AI Coach</span>
+          </div>
+
+          <div className="max-w-3xl rounded-xl border bg-white px-4 py-3 text-base text-neutral-800 shadow-sm">
+            Hello! Before we start, let's understand the speaking session first.
+          </div>
+
+          <div className="max-w-3xl rounded-xl border bg-white px-4 py-3 text-base text-neutral-800 shadow-sm">
+            Please read instructions below.
+          </div>
+
+          <div className="max-w-3xl space-y-2">
+            <div className="rounded-xl border bg-neutral-100 px-4 py-3 text-sm">
+              ① 2 topics, 8 questions total
+            </div>
+
+            <div className="rounded-xl border bg-amber-50 px-4 py-3 text-sm text-amber-700">
+              ② 4–5 minutes speaking time
+            </div>
+
+            <div className="rounded-xl border bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+              ⓘ Keep answers natural & casual
+            </div>
+          </div>
+        </div>
+      ) : (
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2 text-sm text-neutral-500">
+                  <span>AI Coach</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={toggleVoice}
+                      className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                        isVoiceEnabled ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-neutral-200 bg-white text-neutral-600"
+                      }`}
+                    >
+                      {isVoiceEnabled ? "Voice on" : "Voice off"}
+                    </button>
+                    <select
+                      value={ttsVoicePreference}
+                      onChange={(event) => setTtsVoicePreference(event.target.value as VoicePreference)}
+                      className="rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs font-medium text-neutral-700 outline-none"
+                    >
+                      <option value="female">Female voice</option>
+                      <option value="male">Male voice</option>
+                    </select>
+                  </div>
+                </div>
+
+                   {chatLog.map((item, index) => {
+            if (!item.text.trim()) return null;
+            const isAssistant = item.role === "assistant";
+
+            return (
+              <div key={index} className={`flex ${isAssistant ? "justify-start" : "justify-end"}`}>
+                <div
+                  className={`max-w-[80%] rounded-xl px-3 py-2 text-sm leading-6 shadow-sm ${
+                    isAssistant
+                      ? "border bg-white text-neutral-800"
+                      : "bg-neutral-900 text-white"
+                  }`}
+                >
+                  {item.text}
+                </div>
+              </div>
+            );
+          })}
+
+          {isSpeakingSessionActive && (
+            <div className="flex justify-end">
+              <div className="max-w-[80%] rounded-xl border bg-white px-3 py-2 text-sm text-neutral-800 shadow-sm">
+                {answerTranscript || "Speak your answer..."}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+
+    {!isSpeakingSessionActive ? (
+      <div className="mt-3 flex justify-between">
+        <button className="rounded-full border bg-white px-6 py-2 text-sm">
+          Back
+        </button>
+
+        <button
+          onClick={startSpeaking}
+          className="rounded-full px-6 py-2 text-sm text-white"
+          style={{ backgroundImage: "linear-gradient(90deg, #f9b8bc 0%, #d85e63 100%)" }}
+        >
+          Start
+        </button>
+      </div>
+    ) : part1IntroShown ? (
+      <div className="mt-3 flex justify-between">
+        <button className="rounded-full border bg-white px-6 py-2 text-sm text-rose-500">
+          Cancel
+        </button>
+        <button
+          className="rounded-full px-6 py-2 text-sm text-white"
+          style={{ backgroundImage: "linear-gradient(90deg, #f9b8bc 0%, #d85e63 100%)" }}
+        >
+          Start Session
+        </button>
+      </div>
+    ) : (
+
+        <div className="mt-3 flex justify-between gap-2">
+        <button className="rounded-full border bg-white px-4 py-2 text-sm text-rose-500">
+          Cancel
+        </button>
+
+        <div className="flex gap-2">
+          <button className="rounded-full bg-black px-4 py-2 text-sm text-white">
+            Record
+          </button>
+
+          <button className="rounded-full border bg-white px-4 py-2 text-sm">
+            Next
+          </button>
+        </div>
+      </div>
+    )}
+  </section>
+</main>
     );
   }
 
@@ -1987,9 +2159,11 @@ Describe a topic that feels useful for your current level (${speakingLevel}) and
                                 }
                           }
                         >
+
+                          
                           <span
                             aria-hidden="true"
-                            className={`absolute bottom-2.5 h-2.5 w-2.5 rotate-45 ${
+                            className={`"max-w-[75%] rounded-2xl rounded-tl-sm bg-white px-4 py-3 text-sm text-neutral-800 shadow-sm border" ${
                               isAssistant
                                 ? "-left-1 border-b border-l border-neutral-200 bg-white"
                                 : "-right-1 bg-[#111827]"
@@ -2201,9 +2375,92 @@ Describe a topic that feels useful for your current level (${speakingLevel}) and
 
                       {activeStep === 5 && (
                         <div className="mt-4 space-y-4">
-                          <div className="whitespace-pre-line rounded-2xl bg-[color:var(--tertiary)]/70 p-4 text-sm leading-7 text-neutral-700">
-                            {summaryText}
-                          </div>
+                          {!(isSpeakingSessionActive && part1IntroShown && isPart1LearnMode) && (
+                            <div className="whitespace-pre-line rounded-2xl bg-[color:var(--tertiary)]/70 p-4 text-sm leading-7 text-neutral-700">
+                              {summaryText}
+                            </div>
+                          )}
+
+                          {isSpeakingSessionActive && part1IntroShown && isPart1LearnMode && (
+                            <div className="relative space-y-4 pt-1">
+                              <div className="pointer-events-none absolute left-1/2 top-1/2 h-[280px] w-[280px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-rose-200/50 blur-3xl" />
+
+                              <div className="relative flex items-center justify-between gap-3 rounded-2xl bg-white/75 px-3 py-2">
+                                <div className="flex items-center gap-3">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setPart1IntroShown(false);
+                                      setIsSpeakingSessionActive(false);
+                                    }}
+                                    className="flex h-10 w-10 items-center justify-center rounded-full border border-neutral-200 bg-white text-neutral-600"
+                                  >
+                                    ←
+                                  </button>
+                                  <div className="text-xl font-semibold text-neutral-900">Practice Unit {requestedUnit} - Part 1 (Introduction)</div>
+                                </div>
+                                <div className="rounded-full border border-neutral-200 bg-white px-4 py-2 text-2xl font-semibold text-neutral-800">
+                                  {String(Math.floor(sessionTimeLeft / 3600)).padStart(2, "0")}:{String(
+                                    Math.floor((sessionTimeLeft % 3600) / 60),
+                                  ).padStart(2, "0")}:{String(sessionTimeLeft % 60).padStart(2, "0")}
+                                </div>
+                              </div>
+
+                              <div className="relative ml-12 flex items-center gap-2 text-rose-500">
+                                <img src="/logo.png" alt="LexiSpeak logo" className="h-7 w-7 rounded-full object-cover" />
+                                <span className="text-2xl font-semibold text-[#C95B5B]">Lexi - AI Coach</span>
+                              </div>
+
+                              <div className="relative ml-12 max-w-4xl rounded-2xl border border-neutral-200 bg-white px-6 py-5 text-2xl leading-9 text-neutral-800 shadow-sm">
+                                Hello! Before we start the practice session, let's give you a nice understanding about this <span className="font-semibold">introduction and interview</span> system first!
+                              </div>
+
+                              <div className="relative ml-12 max-w-[780px] rounded-2xl border border-neutral-200 bg-white px-6 py-5 text-2xl leading-9 text-neutral-800 shadow-sm">
+                                Please carefully read the instructions below before proceed the practice session
+                              </div>
+
+                              <div className="relative ml-12 max-w-[820px] space-y-3 pt-1">
+                                <div className="rounded-2xl border border-neutral-400 bg-neutral-200 px-5 py-4 text-xl text-neutral-800">
+                                  ① I will include 2 speaking topics with 4 question for each topic, so <span className="font-semibold">8 questions in total.</span>
+                                </div>
+                                <div className="rounded-2xl border border-amber-400 bg-amber-100 px-5 py-4 text-xl text-amber-700">
+                                  ② You will have to speak for the total of <span className="font-semibold">4-5 minutes for 8 questions.</span>
+                                </div>
+                                <div className="rounded-2xl border border-emerald-500 bg-emerald-200 px-5 py-4 text-xl text-emerald-700">
+                                  ⓘ <span className="font-semibold">Tips:</span> Keep your answers reasonable while treating it like a casual conversation.
+                                </div>
+                              </div>
+
+                              <div className="relative mt-10 flex items-center justify-between">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setPart1IntroShown(false);
+                                    setIsSpeakingSessionActive(false);
+                                  }}
+                                  className="rounded-full border border-neutral-200 bg-white px-8 py-3 text-2xl font-medium text-rose-500 shadow-sm"
+                                >
+                                  Cancel
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setPart1IntroShown(false);
+                                    const chosen = speakingCards[0];
+                                    if (!chosen) return;
+                                    appendMessages({ role: "assistant", text: `Topic: ${PART_1_TOPICS[UNIT_PART_1_TOPIC_INDEX[requestedUnit - 1] ?? 0].topic}` });
+                                    appendMessages({ role: "assistant", text: `Question 1: ${toNaturalCoachPrompt(chosen.promptText)}` });
+                                    speakCardText(chosen.promptText);
+                                  }}
+                                  className="rounded-full px-10 py-3 text-2xl font-medium text-white shadow-sm"
+                                  style={{ backgroundImage: "linear-gradient(90deg, #f9b8bc 0%, #d85e63 100%)" }}
+                                >
+                                  Start Session
+                                </button>
+                              </div>
+                            </div>
+                          )}
 
                           {!isSpeakingSessionActive ? (
                             sessionCompleted ? (
@@ -2241,7 +2498,7 @@ Describe a topic that feels useful for your current level (${speakingLevel}) and
                                 {requestedPart === 2 ? "Start cue-card practice" : "Start speaking now"}
                               </button>
                             )
-                          ) : (
+                          ) : !(part1IntroShown && isPart1LearnMode) ? (
                             <div className="space-y-3">
                               {requestedPart !== 2 && (
                                 <div className="rounded-2xl border border-neutral-200 bg-white p-4 text-sm text-neutral-700">
@@ -2328,7 +2585,7 @@ Describe a topic that feels useful for your current level (${speakingLevel}) and
                                 </div>
                               </div>
                             </div>
-                          )}
+                          ) : null}
                         </div>
                       )}
 
@@ -2342,7 +2599,10 @@ Describe a topic that feels useful for your current level (${speakingLevel}) and
             </div>
           </div>
 
-            <div className="mt-4 flex items-center justify-between gap-3 pt-4">
+            <div
+              className="mt-4 flex items-center justify-between gap-3 pt-4"
+              style={{ display: activeStep === 5 && isSpeakingSessionActive ? "none" : "flex" }}
+            >
               <button
                 type="button"
                 onClick={prevStep}

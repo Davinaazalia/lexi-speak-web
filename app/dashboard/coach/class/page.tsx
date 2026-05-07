@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect, type MouseEvent } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import TextButton from "@/components/ui/system/TextButton";
-import IconButton from "@/components/ui/system/IconButton";
 import { InputField } from "@/components/ui/system/InputField";
-import { ArrowLeftIcon, PlusIcon, UsersIcon, CopyIcon, CheckIcon, PencilIcon, TrashIcon } from "@phosphor-icons/react";
+import { PlusIcon, UsersIcon, CopyIcon, CheckIcon, PencilIcon, TrashIcon } from "@phosphor-icons/react";
 
 interface Class {
   id: string;
@@ -32,10 +32,15 @@ export default function ClassPage() {
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     checkRoleAndFetch();
+  }, []);
+
+  useEffect(() => {
+    setIsMounted(true);
   }, []);
 
   const checkRoleAndFetch = async () => {
@@ -252,25 +257,18 @@ export default function ClassPage() {
   };
 
   return (
-    <main className="min-h-screen p-6 bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <main className="w-full bg-transparent">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="inline-flex justify-start items-center gap-4 mb-8">
-          <IconButton 
-            variant="base" 
-            icon={ArrowLeftIcon}
-            onClick={() => router.back()}
-          />
-          <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-secondary to-primary bg-clip-text text-transparent">
-              My Classes
-            </h1>
-            <p className="text-sm text-gray-600 mt-1">Manage your class and students</p>
-          </div>
+        <div className="mb-8 rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
+          <h1 className="text-xl font-semibold text-gray-800 dark:text-white/90">
+            My Classes
+          </h1>
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Manage your class and students</p>
         </div>
 
         {/* Create Button */}
-        <div className="mb-8 flex justify-end">
+        <div className="mb-8 flex justify-start">
           <TextButton
             variant="primary"
             onClick={() => setShowCreateForm(true)}
@@ -281,12 +279,12 @@ export default function ClassPage() {
           </TextButton>
         </div>
 
-        {/* Classes Grid */}
+        {/* Classes */}
         {classes.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 px-6 bg-white/50 rounded-2xl backdrop-blur-sm shadow-[1px_2px_12px_0px_rgba(217,217,217,0.50)]">
+          <div className="rounded-3xl border border-dashed border-gray-400 bg-white p-10 text-center text-gray-700 max-w-3xl mx-auto">
             <div className="text-6xl mb-4">📚</div>
             <h2 className="text-2xl font-bold text-gray-800 mb-2">No Classes Yet</h2>
-            <p className="text-gray-600 text-center mb-6 max-w-md">
+            <p className="text-gray-700 text-center mb-6 max-w-md mx-auto">
               Create your first class to start managing students and track their progress.
             </p>
             <TextButton
@@ -297,66 +295,72 @@ export default function ClassPage() {
             </TextButton>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="flex flex-wrap items-start gap-6">
             {classes.map((cls) => (
               <div
                 key={cls.id}
                 className="group cursor-pointer"
                 onClick={() => handleViewStudents(cls)}
               >
-                <div className="p-6 bg-white/50 rounded-2xl shadow-[1px_2px_12px_0px_rgba(217,217,217,0.50)] outline outline-offset-1 outline-white/50 hover:outline-primary/30 transition-all hover:shadow-[1px_2px_20px_0px_rgba(217,217,217,0.70)] backdrop-blur-sm">
-                  <div className="flex items-start justify-between mb-4">
+                <div className="relative overflow-hidden rounded-[24px] border border-gray-200 bg-gradient-to-br from-white via-white to-rose-50/50 p-5 shadow-[0_12px_30px_rgba(15,23,42,0.08)] transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_18px_40px_rgba(15,23,42,0.16)] w-[360px]">
+                  <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-primary/10 blur-2xl" />
+
+                  <div className="mb-4 flex items-start justify-between gap-4">
                     <div className="flex-1">
-                      <h3 className="text-lg font-bold bg-gradient-to-r from-secondary to-primary bg-clip-text text-transparent mb-2">
+                      <span className="mb-3 inline-flex rounded-full bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">
+                        Class Room
+                      </span>
+                      <h3 className="mb-1 text-2xl font-bold text-gray-900 leading-tight">
                         {cls.name}
                       </h3>
                       <p className="text-sm text-gray-600">
                         {cls.description ? cls.description : "Click to view students"}
                       </p>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+                          Active
+                        </span>
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={(e) => handleOpenEditModal(cls, e)}
-                        className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                        className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 bg-white/90 text-primary/70 shadow-sm transition-colors hover:bg-primary/5 hover:text-primary"
                         title="Edit class"
                       >
-                        <PencilIcon size={18} weight="bold" />
+                        <PencilIcon size={20} weight="regular" />
                       </button>
-                      <UsersIcon 
-                        weight="bold" 
-                        size={24} 
-                        className="text-primary/60 group-hover:text-primary transition-colors"
-                      />
+                      <div className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 bg-white/90 text-primary/70 shadow-sm transition-colors group-hover:text-primary">
+                        <UsersIcon weight="regular" size={20} />
+                      </div>
                     </div>
                   </div>
 
-                  <div className="bg-tertiary rounded-xl p-3 mt-4">
-                    <p className="text-xs font-semibold text-gray-600 mb-1">Join Code</p>
-                    <div className="flex items-center justify-between bg-white/70 rounded-lg p-2">
-                      <code className="font-mono font-bold text-primary text-sm">
-                        {cls.join_code}
+                  <div className="mt-5 rounded-2xl border border-rose-100 bg-white/90 p-4">
+                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-500">Join Code</p>
+                    <div className="flex items-center justify-between rounded-xl border border-rose-100 bg-rose-50/50 px-3 py-2">
+                      <code className="font-mono text-base font-bold tracking-[0.18em] text-gray-900">
+                        {cls.join_code.toUpperCase()}
                       </code>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleCopyCode(cls.join_code);
                         }}
-                        className="p-1.5 hover:bg-primary/10 rounded-lg transition-colors"
+                        className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-50"
                         title="Copy join code"
                       >
                         {copiedCode === cls.join_code ? (
-                          <CheckIcon 
-                            weight="bold" 
-                            size={18} 
-                            className="text-green-600"
-                          />
+                          <>
+                            <CheckIcon weight="bold" size={16} className="text-green-600" />
+                            Copied
+                          </>
                         ) : (
-                          <CopyIcon 
-                            weight="bold" 
-                            size={18} 
-                            className="text-primary/60 hover:text-primary"
-                          />
+                          <>
+                            <CopyIcon weight="bold" size={16} className="text-rose-500" />
+                            Copy
+                          </>
                         )}
                       </button>
                     </div>
@@ -368,10 +372,10 @@ export default function ClassPage() {
         )}
 
         {/* Create Form Modal */}
-        {showCreateForm && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8">
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-secondary to-primary bg-clip-text text-transparent mb-6">
+        {showCreateForm && isMounted && createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/55 backdrop-blur-md p-4">
+            <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 border border-gray-200">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">
                 Create New Class
               </h2>
 
@@ -383,6 +387,7 @@ export default function ClassPage() {
                   value={nameClass}
                   onChange={setNameClass}
                   placeholder="Enter class name..."
+                  className="bg-white text-gray-900 outline-gray-300"
                 />
               </div>
 
@@ -394,6 +399,7 @@ export default function ClassPage() {
                   value={description}
                   onChange={setDescription}
                   placeholder="Enter class description..."
+                  className="bg-white text-gray-900 outline-gray-300"
                 />
               </div>
 
@@ -418,14 +424,15 @@ export default function ClassPage() {
                 </TextButton>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* Edit Class Modal */}
-        {showEditModal && editingClass && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8">
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-secondary to-primary bg-clip-text text-transparent mb-6">
+        {showEditModal && editingClass && isMounted && createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/55 backdrop-blur-md p-4">
+            <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 border border-gray-200">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">
                 Edit Class
               </h2>
 
@@ -437,6 +444,7 @@ export default function ClassPage() {
                   value={nameClass}
                   onChange={setNameClass}
                   placeholder="Enter class name..."
+                  className="bg-white text-gray-900 outline-gray-300"
                 />
               </div>
 
@@ -448,6 +456,7 @@ export default function ClassPage() {
                   value={description}
                   onChange={setDescription}
                   placeholder="Enter class description..."
+                  className="bg-white text-gray-900 outline-gray-300"
                 />
               </div>
 
@@ -483,15 +492,16 @@ export default function ClassPage() {
                 </TextButton>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* Students Modal */}
-        {showModal && selectedClass && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[80vh] overflow-y-auto">
-              <div className="sticky top-0 bg-white rounded-t-3xl border-b border-gray-100 p-6">
-                <h2 className="text-2xl font-bold bg-gradient-to-r from-secondary to-primary bg-clip-text text-transparent">
+        {showModal && selectedClass && isMounted && createPortal(
+          <div className="fixed inset-0 bg-black/55 backdrop-blur-md flex items-center justify-center z-[9999] p-4">
+            <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full max-h-[80vh] overflow-y-auto border border-gray-200">
+              <div className="sticky top-0 bg-white rounded-t-3xl border-b border-gray-200 p-6">
+                <h2 className="text-2xl font-bold text-gray-900">
                   Students in {selectedClass.name}
                 </h2>
               </div>
@@ -536,7 +546,8 @@ export default function ClassPage() {
                 </TextButton>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
     </main>

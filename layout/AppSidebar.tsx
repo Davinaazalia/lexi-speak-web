@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase";
 import {
   ChevronDownIcon,
   GridIcon,
+  GroupIcon,
   HorizontaLDots,
   ListIcon,
   PlugInIcon,
@@ -43,7 +44,7 @@ const baseNavItems: NavItem[] = [
     path: "/dashboard/user?tab=test",
   },
   {
-    icon: <TableIcon />,
+    icon: <GroupIcon />,
     name: "Class",
     path: "/dashboard/user/class",
   },
@@ -91,7 +92,7 @@ const coachNavItems: NavItem[] = [
     ],
   },
   {
-    icon: <TableIcon />,
+    icon: <GroupIcon />,
     name: "Class",
     path: "/dashboard/coach/class",
   },

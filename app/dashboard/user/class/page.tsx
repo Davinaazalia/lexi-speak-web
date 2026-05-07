@@ -23,6 +23,19 @@ interface JoinedClass {
   coach_name: string | null;
 }
 
+function getErrorMessage(error: unknown): string {
+  if (!error) return "";
+  if (typeof error === "string") return error;
+  if (error instanceof Error) return error.message;
+
+  if (typeof error === "object") {
+    const maybeMessage = (error as { message?: unknown }).message;
+    if (typeof maybeMessage === "string") return maybeMessage;
+  }
+
+  return "";
+}
+
 export default function StudentClassPage() {
   const [joinCode, setJoinCode] = useState("");
   const [joinedClasses, setJoinedClasses] = useState<JoinedClass[]>([]);
@@ -187,13 +200,24 @@ export default function StudentClassPage() {
       console.log("join_class_by_code result - error:", joinError);
 
       if (joinError) {
-        console.error("Error joining class:", joinError);
-        if (joinError.message.includes("tidak ditemukan")) {
+        const joinErrorMessage = getErrorMessage(joinError);
+        const normalizedMessage = joinErrorMessage.toLowerCase();
+
+        console.error("Error joining class:", {
+          raw: joinError,
+          message: joinErrorMessage || "No error message returned",
+        });
+
+        if (normalizedMessage.includes("tidak ditemukan")) {
           setMessage("Kode kelas tidak ditemukan. Periksa kembali dan coba lagi.");
-        } else if (joinError.message.includes("Hanya akun student")) {
+        } else if (normalizedMessage.includes("hanya akun student")) {
           setMessage("Hanya akun student yang dapat bergabung.");
         } else {
-          setMessage("Gagal bergabung dengan kelas: " + joinError.message);
+          setMessage(
+            joinErrorMessage
+              ? `Gagal bergabung dengan kelas: ${joinErrorMessage}`
+              : "Gagal bergabung dengan kelas. Coba lagi atau hubungi admin."
+          );
         }
         return;
       }
@@ -222,22 +246,22 @@ export default function StudentClassPage() {
   }
 
   return (
-    <main className="min-h-screen p-6 bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <main className="w-full bg-transparent">
       <div className="max-w-6xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-secondary to-primary bg-clip-text text-transparent">Class</h1>
-          <p className="mt-2 text-gray-600">Masukkan kode join untuk gabung kelas. Setelah berhasil kamu akan melihat kartu kelas di bawah.</p>
+        <div className="mb-8 rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
+          <h1 className="text-xl font-semibold text-gray-800 dark:text-white/90">Class</h1>
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Masukkan kode join untuk gabung kelas. Setelah berhasil kamu akan melihat kartu kelas di bawah.</p>
         </div>
 
         <div className="grid gap-6">
-          <div className="rounded-3xl border border-gray-200 bg-white/80 p-6 shadow-[1px_2px_12px_0px_rgba(217,217,217,0.50)] backdrop-blur-sm">
+          <div className="rounded-3xl border border-gray-300 bg-white p-6 shadow-[0_6px_20px_rgba(15,23,42,0.08)] max-w-3xl mx-auto">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
               <div className="flex-1">
                 <InputField
                   value={joinCode}
                   onChange={setJoinCode}
                   placeholder="Masukkan join code..."
-                  className="w-full"
+                  className="w-full bg-white text-gray-900 outline-gray-300"
                 />
               </div>
               <TextButton
@@ -253,15 +277,15 @@ export default function StudentClassPage() {
               </TextButton>
             </div>
             {message ? (
-              <p className="mt-4 text-sm text-gray-700">{message}</p>
+              <p className="mt-4 text-sm text-gray-800">{message}</p>
             ) : (
-              <p className="mt-4 text-sm text-gray-500">Kamu bisa menambahkan kelas dengan kode di atas.</p>
+              <p className="mt-4 text-sm text-gray-600">Kamu bisa menambahkan kelas dengan kode di atas.</p>
             )}
           </div>
 
           <div className="space-y-4">
-            {joinedClasses.length === 0 ? (
-              <div className="rounded-3xl border border-dashed border-gray-300 bg-white/80 p-10 text-center text-gray-500">
+              {joinedClasses.length === 0 ? (
+              <div className="rounded-3xl border border-dashed border-gray-400 bg-white p-10 text-center text-gray-700 max-w-3xl mx-auto">
                 <p className="text-lg font-medium">Belum bergabung dengan kelas apa pun.</p>
                 <p className="mt-2 text-sm">Masukkan kode join kelas untuk memulai.</p>
               </div>
@@ -269,7 +293,7 @@ export default function StudentClassPage() {
               joinedClasses.map((joinedClass) => (
                 <div
                   key={joinedClass.id}
-                  className="rounded-3xl border border-gray-200 bg-white/90 p-6 shadow-[1px_2px_12px_0px_rgba(217,217,217,0.50)]"
+                  className="rounded-3xl border border-gray-300 bg-white p-6 shadow-[0_6px_20px_rgba(15,23,42,0.08)] max-w-3xl mx-auto"
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>

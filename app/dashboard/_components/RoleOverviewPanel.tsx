@@ -6,6 +6,7 @@ import type { ApexOptions } from "apexcharts";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import UnitCard from "./UnitCard";
 
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
   ssr: false,
@@ -51,6 +52,41 @@ type RoleOverviewPanelProps = {
   tab?: "dashboard" | "learn" | "test";
 };
 
+type JourneyChatItem = {
+  prompt: string;
+  reply: string;
+};
+
+type JourneyContentItem = {
+  title: string;
+  prompt: string;
+  points: string[];
+  takeaway: string;
+};
+
+type JourneyUnitCard = {
+  id: string;
+  unitIndex: number;
+  mode: "learn" | "test";
+  title: string;
+  subtitle: string;
+  price?: number;
+  topic: string;
+  description: string;
+  accent: string;
+  actionLabel: string;
+  parts: Array<{
+    id: number;
+    title: string;
+    hint: string;
+  }>;
+  journey: {
+    part1: JourneyChatItem[];
+    part2: JourneyContentItem;
+    part3: JourneyChatItem[];
+  };
+};
+
 const roleLabel = (role: AppRole | null | undefined) => {
   if (role === "admin") return "Admin";
   if (role === "guru") return "Coach";
@@ -76,6 +112,167 @@ const getCurrentLevelLabel = (band: number | null) => {
 const formatDelta = (delta: number) => {
   const sign = delta > 0 ? "+" : "";
   return `${sign}${delta.toFixed(1)}`;
+};
+
+type ChatPartProps = {
+  eyebrow: string;
+  title: string;
+  badge: string;
+  accent: string;
+  questions: JourneyChatItem[];
+  progress: number;
+  actionLabel: string;
+  onOpen: () => void;
+};
+
+const ChatPart = ({
+  eyebrow,
+  title,
+  badge,
+  accent,
+  questions,
+  progress,
+  actionLabel,
+  onOpen,
+}: ChatPartProps) => {
+  return (
+    <section className="relative pl-6 md:pl-8">
+      <div className={`absolute left-[2px] top-6 h-4 w-4 rounded-full border-4 border-white bg-gradient-to-r ${accent} shadow-sm dark:border-gray-950`} />
+      <div className="relative overflow-hidden rounded-[28px] border border-gray-200 bg-gradient-to-br from-white via-white to-sky-50/70 p-5 shadow-[0_12px_30px_rgba(15,23,42,0.08)] dark:border-gray-800 dark:bg-white/[0.03]">
+        <div className="pointer-events-none absolute -right-8 -top-10 h-24 w-24 rounded-full bg-brand-100/60 blur-3xl" />
+
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">{eyebrow}</p>
+            <h4 className="mt-1 text-lg font-semibold text-gray-900 dark:text-white/90">{title}</h4>
+          </div>
+          <span className={`rounded-full bg-gradient-to-r ${accent} px-3 py-1 text-xs font-semibold text-white`}>
+            {badge}
+          </span>
+        </div>
+
+        <div className="mt-4 space-y-3">
+          {questions.map((item, index) => {
+            const isEven = index % 2 === 0;
+
+            return (
+              <div key={`${item.prompt}-${index}`} className="space-y-2">
+                <div className={`flex items-start gap-3 ${isEven ? "justify-start" : "justify-end"}`}>
+                  <span className="mt-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-500/10 text-[10px] font-semibold uppercase tracking-[0.18em] text-brand-600 dark:bg-brand-500/20 dark:text-brand-300">
+                    AI
+                  </span>
+                  <div className="max-w-[82%] rounded-2xl rounded-tl-sm bg-gray-50 px-4 py-3 text-sm text-gray-700 shadow-sm dark:bg-gray-800/80 dark:text-gray-100">
+                    {item.prompt}
+                  </div>
+                </div>
+                <div className={`flex items-start gap-3 ${isEven ? "justify-end" : "justify-start"}`}>
+                  <div className="max-w-[82%] rounded-2xl rounded-tr-sm bg-brand-500 px-4 py-3 text-sm text-white shadow-sm">
+                    {item.reply}
+                  </div>
+                  <span className="mt-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-600 shadow-sm dark:bg-gray-900 dark:text-gray-300">
+                    You
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white/80 px-4 py-3 shadow-sm ring-1 ring-gray-200/70 dark:bg-gray-900/70 dark:ring-gray-800">
+          <div>
+            <p className="text-xs uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">Stage progress</p>
+            <p className="mt-1 text-sm font-medium text-gray-700 dark:text-gray-300">{progress.toFixed(1)}% complete</p>
+          </div>
+          <button
+            type="button"
+            onClick={onOpen}
+            className={`rounded-full bg-gradient-to-r ${accent} px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:shadow-md`}
+          >
+            {actionLabel}
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+type ContentCardPartProps = {
+  eyebrow: string;
+  title: string;
+  badge: string;
+  accent: string;
+  content: JourneyContentItem;
+  progress: number;
+  actionLabel: string;
+  onOpen: () => void;
+};
+
+const ContentCardPart = ({
+  eyebrow,
+  title,
+  badge,
+  accent,
+  content,
+  progress,
+  actionLabel,
+  onOpen,
+}: ContentCardPartProps) => {
+  return (
+    <section className="relative pl-6 md:pl-8">
+      <div className={`absolute left-[2px] top-6 h-4 w-4 rounded-full border-4 border-white bg-gradient-to-r ${accent} shadow-sm dark:border-gray-950`} />
+      <div className="relative overflow-hidden rounded-[28px] border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-white p-5 shadow-[0_16px_40px_rgba(245,158,11,0.18)] dark:border-amber-500/30 dark:bg-amber-500/10">
+        <div className="pointer-events-none absolute -right-8 -top-10 h-24 w-24 rounded-full bg-amber-200/60 blur-3xl" />
+
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">{eyebrow}</p>
+            <h4 className="mt-1 text-lg font-semibold text-gray-900 dark:text-white/90">{title}</h4>
+          </div>
+          <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-amber-700 shadow-sm ring-1 ring-amber-200 dark:bg-amber-500/15 dark:text-amber-100 dark:ring-amber-500/30">
+            {badge}
+          </span>
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-amber-200/70 bg-white/90 p-4 shadow-sm dark:border-amber-500/20 dark:bg-gray-950/40">
+          <p className="text-xs uppercase tracking-[0.16em] text-amber-700 dark:text-amber-200">Core question</p>
+          <p className="mt-2 text-base font-semibold text-gray-900 dark:text-white/95">{content.prompt}</p>
+        </div>
+
+        <div className="mt-4 space-y-3">
+          {content.points.map((point) => (
+            <div key={point} className="flex items-start gap-3 rounded-2xl bg-white/80 px-4 py-3 shadow-sm ring-1 ring-gray-200/70 dark:bg-gray-900/55 dark:ring-gray-800">
+              <span className={`mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-r ${accent} text-xs font-semibold text-white`}>
+                •
+              </span>
+              <p className="text-sm text-gray-700 dark:text-gray-300">{point}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white/85 px-4 py-3 shadow-sm ring-1 ring-amber-200/70 dark:bg-gray-950/40 dark:ring-amber-500/20">
+          <div>
+            <p className="text-xs uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">Focus</p>
+            <p className="mt-1 text-sm font-medium text-gray-700 dark:text-gray-300">{content.takeaway}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onOpen}
+            className={`rounded-full bg-gradient-to-r ${accent} px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:shadow-md`}
+          >
+            {actionLabel}
+          </button>
+        </div>
+
+        <div className="mt-3 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+          <span>Connection to the same topic</span>
+          <span>{progress.toFixed(1)}%</span>
+        </div>
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/80 dark:bg-gray-900/70">
+          <div className={`h-full rounded-full bg-gradient-to-r ${accent}`} style={{ width: `${progress}%` }} />
+        </div>
+      </div>
+    </section>
+  );
 };
 
 export default function RoleOverviewPanel({
@@ -332,34 +529,94 @@ export default function RoleOverviewPanel({
     },
   ];
 
-  const unitCards = [
+  const unitCards: JourneyUnitCard[] = [
     {
       id: "unit-1",
+      unitIndex: 1,
+      mode: "learn",
       title: "Unit 1",
       subtitle: "Learn mode",
+      price: 0,
       topic: "Your home town or village",
       description: "Flexible practice. Open any part first, then move in your own order.",
       accent: "from-brand-500 to-brand-300",
       actionLabel: "Open Learn Hub",
       parts: [
-        { id: 1, title: "Part 1", hint: "Short answers" },
-        { id: 2, title: "Part 2", hint: "Cue card / long turn" },
-        { id: 3, title: "Part 3", hint: "Longer discussion" },
+        { id: 1, title: "Part 1", hint: "Chatbot warm-up" },
+        { id: 2, title: "Part 2", hint: "Core content card" },
+        { id: 3, title: "Part 3", hint: "Chatbot follow-up" },
       ],
+      journey: {
+        part1: [
+          { prompt: "Where is your hometown or village located?", reply: "It is a quiet place near the river, surrounded by hills." },
+          { prompt: "What do people usually notice first there?", reply: "The streets are calm, and everyone seems to know each other." },
+          { prompt: "Is it more busy or peaceful on a normal day?", reply: "Usually peaceful, but the market becomes lively in the morning." },
+          { prompt: "What is something you personally like about it?", reply: "I like the slower pace because it feels comfortable and familiar." },
+          { prompt: "Has it changed much over time?", reply: "Yes, there are more shops now, but it still keeps its local character." },
+          { prompt: "Would you like to live there in the future?", reply: "Yes, because it feels like home and the community is very supportive." },
+        ],
+        part2: {
+          title: "Core concept",
+          prompt: "Describe your home town or village and explain what makes it special.",
+          points: [
+            "Start with a clear location and one visual detail so the listener can picture it quickly.",
+            "Add one personal memory or routine to make the answer feel real, not generic.",
+            "Show how the place has changed and what stayed the same over time.",
+            "Finish with a simple judgment: why it still matters to you today.",
+          ],
+          takeaway: "Use one strong example, then expand it in a clean flow.",
+        },
+        part3: [
+          { prompt: "Why do you think people feel attached to their hometowns?", reply: "Because the place is tied to family, memories, and identity." },
+          { prompt: "What changes could make small villages better for young people?", reply: "Better transport, more learning spaces, and more job opportunities." },
+          { prompt: "Why do some people decide to leave their hometown?", reply: "They may move for work, study, or a faster lifestyle in the city." },
+          { prompt: "Should local governments protect traditional neighborhoods?", reply: "Yes, because they preserve culture while still giving people a sense of belonging." },
+        ],
+      },
     },
     {
       id: "unit-2",
-      title: "Unit 2",
+      unitIndex: 2,
+      mode: "test",
+      title: "Test Mode",
       subtitle: "Test mode",
+      price: 50000,
       topic: "Your accommodation",
       description: "Strict practice. The order is locked and the coach is connected at test start.",
       accent: "from-amber-500 to-orange-300",
       actionLabel: "Open Test Hub",
       parts: [
-        { id: 1, title: "Part 1", hint: "Quick warm-up" },
-        { id: 2, title: "Part 2", hint: "Cue card / 1-minute prep" },
-        { id: 3, title: "Part 3", hint: "Follow-up discussion" },
+        { id: 1, title: "Part 1", hint: "Chatbot warm-up" },
+        { id: 2, title: "Part 2", hint: "Core content card" },
+        { id: 3, title: "Part 3", hint: "Chatbot follow-up" },
       ],
+      journey: {
+        part1: [
+          { prompt: "What kind of place do you live in right now?", reply: "I live in a comfortable apartment in a quiet neighborhood." },
+          { prompt: "What do you like most about your accommodation?", reply: "It is clean, convenient, and close to the places I need." },
+          { prompt: "Is your home usually quiet or busy?", reply: "It is mostly quiet, which helps me focus and rest well." },
+          { prompt: "What makes a home feel comfortable to you?", reply: "Good light, enough space, and a peaceful atmosphere." },
+          { prompt: "Have you lived there for a long time?", reply: "Not too long, but long enough to get used to the area." },
+          { prompt: "Would you like to change anything about it?", reply: "Maybe a bigger study area, but overall it works well for me." },
+        ],
+        part2: {
+          title: "Core concept",
+          prompt: "Describe your accommodation and explain what makes it comfortable or challenging.",
+          points: [
+            "Describe the layout or atmosphere first, then narrow down to one concrete detail.",
+            "Mention a comfort factor and a challenge so the answer sounds balanced.",
+            "Link the place to your daily routine, study, or rest.",
+            "Close with a short conclusion about why it suits you right now.",
+          ],
+          takeaway: "Balance positives and limitations in one clear explanation.",
+        },
+        part3: [
+          { prompt: "How does housing affect a person’s lifestyle?", reply: "It can shape sleep, focus, and even social habits." },
+          { prompt: "What should people consider before choosing a place to live?", reply: "Location, cost, safety, and daily convenience matter a lot." },
+          { prompt: "Why do some people prefer living in apartments?", reply: "They are often practical, secure, and close to work or study places." },
+          { prompt: "Should governments make housing more affordable?", reply: "Yes, because stable housing has a big impact on quality of life." },
+        ],
+      },
     },
   ];
 
@@ -422,250 +679,136 @@ export default function RoleOverviewPanel({
   const [modalUnitIndex, setModalUnitIndex] = useState<number | null>(null);
   const openUnitModal = (unitIndex: number) => setModalUnitIndex(unitIndex);
   const closeUnitModal = () => setModalUnitIndex(null);
+  const [hoveredPart, setHoveredPart] = useState<number | null>(null);
+  const [hoveredUnit, setHoveredUnit] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [sortOrder, setSortOrder] = useState<'terbaru' | 'terlama'>('terbaru');
+
+  const filterAndSortUnitCards = (cards: JourneyUnitCard[]) => {
+    const q = searchQuery.trim().toLowerCase();
+    const base = q
+      ? cards.filter((u) => {
+          const hay = `${u.title} ${u.topic} ${u.description ?? ""}`.toLowerCase();
+          return hay.includes(q);
+        })
+      : [...cards];
+
+    base.sort((a, b) => {
+      return sortOrder === 'terbaru'
+        ? b.unitIndex - a.unitIndex
+        : a.unitIndex - b.unitIndex;
+    });
+
+    return base;
+  };
+
+  const filteredLearnUnitCards = useMemo(() => {
+    return filterAndSortUnitCards(unitCards.filter((u) => u.mode === "learn"));
+  }, [searchQuery, unitCards, sortOrder]);
+
+  const filteredTestUnitCards = useMemo(() => {
+    return filterAndSortUnitCards(unitCards.filter((u) => u.mode === "test"));
+  }, [searchQuery, unitCards, sortOrder]);
 
   if (loading) {
     return (
+      <div className="py-12 text-center text-gray-500">Loading...</div>
+    );
+  }
+
+  if (tab === "learn") {
+    return (
       <section className="space-y-6">
         <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
-          <p className="text-sm text-gray-500 dark:text-gray-400">Loading dashboard...</p>
+          <h1 className="text-xl font-semibold text-gray-800 dark:text-white/90">Learn</h1>
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Search topics and open a learn unit.</p>
+        </div>
+
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+          <div className="flex items-center gap-3">
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search topics..."
+              className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-300"
+            />
+            <label className="sr-only">Sort</label>
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as 'terbaru' | 'terlama')}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700"
+            >
+              <option value="terbaru">Terbaru</option>
+              <option value="terlama">Terlama</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {filteredLearnUnitCards.map((unit) => {
+            const unitIndex = unit.unitIndex;
+            return (
+              <UnitCard
+                key={unit.id}
+                subtitle={unit.subtitle}
+                title={unit.title}
+                topic={unit.topic}
+                price={unit.price}
+                progress={getUnitProgress(unitIndex)}
+                status="Active"
+                onStart={() => router.push(`/onboarding?mode=learn&unit=${unitIndex}&part=1&autostart=1`)}
+              />
+            );
+          })}
         </div>
       </section>
     );
   }
 
-  // For Learn/Test modes, show only unit cards
-  if ((tab === "learn" || tab === "test") && expectedRole === "user") {
+  if (tab === "test") {
     return (
       <section className="space-y-6">
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
-          <h1 className="text-xl font-semibold text-gray-800 dark:text-white/90">{title}</h1>
-          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{description}</p>
-          {notice ? <p className="mt-3 text-sm text-warning-600">{notice}</p> : null}
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+          <h1 className="text-xl font-semibold text-gray-800 dark:text-white/90">Test</h1>
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Search tests and open a test unit.</p>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-1">
-          {unitCards
-            .filter((_, idx) => (tab === "learn" ? idx === 0 : tab === "test" ? idx === 1 : true))
-            .map((unit, _) => {
-            const unitIndex = tab === "learn" ? 1 : tab === "test" ? 2 : 1;
-            const unitProgress = getUnitProgress(unitIndex);
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
+          <div className="flex items-center gap-3">
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search topics..."
+              className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-300"
+            />
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as 'terbaru' | 'terlama')}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700"
+            >
+              <option value="terbaru">Terbaru</option>
+              <option value="terlama">Terlama</option>
+            </select>
+          </div>
+        </div>
 
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {filteredTestUnitCards.map((unit) => {
+            const unitIndex = unit.unitIndex;
             return (
-            <div key={unit.id} className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
-              <div onClick={() => openUnitModal(unitIndex)} className="flex items-start justify-between gap-4 cursor-pointer">
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">{unit.subtitle}</p>
-                  <h3 className="mt-1 text-xl font-semibold text-gray-800 dark:text-white/90">{unit.title}</h3>
-                  <p className="mt-2 text-sm font-medium text-brand-600 dark:text-brand-400">Topic: {unit.topic}</p>
-                  <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{unit.description}</p>
-                </div>
-                <span className={`rounded-full bg-gradient-to-r ${unit.accent} px-3 py-1 text-xs font-semibold text-white`}>
-                  3 Parts
-                </span>
-              </div>
-
-              <div className="mt-4 space-y-2">
-                <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                  <span>Unit progress</span>
-                  <span>{unitProgress.toFixed(1)}%</span>
-                </div>
-                <div className="h-2.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
-                  <div
-                    className={`h-full rounded-full bg-gradient-to-r ${unit.accent}`}
-                    style={{ width: `${Math.max(0, unitProgress)}%` }}
-                  />
-                </div>
-              </div>
-
-              <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                {unit.parts.map((part) => {
-                  const partProgress = getPartProgress(unitIndex, part.id);
-                  const isPartTwo = part.id === 2;
-                  return (
-                    <div
-                      key={`summary-${part.id}`}
-                      className={`rounded-2xl border px-3 py-2 ${
-                        isPartTwo
-                          ? "border-amber-200 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10"
-                          : "border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-white/[0.03]"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">
-                        <span>{part.title}</span>
-                        <span>{isPartTwo ? "Cue card" : partProgress >= 100 ? "Done" : "Open"}</span>
-                      </div>
-                      <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">{part.hint}</p>
-                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white dark:bg-gray-800">
-                        <div
-                          className={`h-full rounded-full bg-gradient-to-r ${isPartTwo ? "from-amber-500 to-orange-300" : unit.accent}`}
-                          style={{ width: `${partProgress}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="mt-5 space-y-3">
-                {unit.parts.map((part) => {
-                  const partProgress = getPartProgress(unitIndex, part.id);
-                  const isPartTwo = part.id === 2;
-                  return (
-                    <button
-                      key={part.id}
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); handleUnitPartClick(unitIndex, part.id); }}
-                      className={`w-full rounded-2xl border px-4 py-3 text-left transition hover:-translate-y-[1px] ${
-                        isPartTwo
-                          ? "border-amber-200 bg-amber-50 hover:border-amber-300 hover:bg-amber-100/70 dark:border-amber-500/30 dark:bg-amber-500/10 dark:hover:bg-amber-500/20"
-                          : "border-gray-200 bg-gray-50 hover:border-brand-300 hover:bg-brand-50 dark:border-gray-700 dark:bg-white/[0.03] dark:hover:bg-brand-500/10"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-gray-800 dark:text-white/90">{part.title}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">{part.hint}</p>
-                        </div>
-                        <span className={`rounded-full px-3 py-1 text-xs font-medium ${
-                          isPartTwo
-                            ? "bg-white text-amber-700 dark:bg-amber-500/20 dark:text-amber-100"
-                            : "bg-white text-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                        }`}>
-                          {isPartTwo ? "1 min prep" : partProgress >= 100 ? "Done" : "Open"}
-                        </span>
-                      </div>
-                      <div className="mt-3 flex items-center gap-3">
-                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-white dark:bg-gray-800">
-                          <div
-                            className={`h-full rounded-full bg-gradient-to-r ${isPartTwo ? "from-amber-500 to-orange-300" : unit.accent}`}
-                            style={{ width: `${partProgress}%` }}
-                          />
-                        </div>
-                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{partProgress.toFixed(1)}%</span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {unitIndex === 2 ? (
-                <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
-                  <div>
-                    <label className="mb-1 block text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                      Coach for test
-                    </label>
-                    <select
-                      value={selectedCoachId}
-                      onChange={(event) => setSelectedCoachId(event.target.value)}
-                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 outline-none transition focus:border-brand-300 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                    >
-                      <option value="">Select a coach for this test</option>
-                      {coaches.map((coach) => (
-                        <option key={coach.id} value={coach.id}>
-                          {coach.email}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleConnectCoachForTest}
-                    disabled={connectingCoach || !selectedCoachId}
-                    className="rounded-lg bg-gradient-to-r from-brand-500 to-brand-400 px-4 py-2 text-sm font-semibold text-white transition hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {connectingCoach ? "Connecting..." : "Connect Coach & Start Test"}
-                  </button>
-                </div>
-              ) : null}
-            </div>
+              <UnitCard
+                key={unit.id}
+                subtitle={unit.subtitle}
+                title={unit.title}
+                topic={unit.topic}
+                price={unit.price}
+                progress={getUnitProgress(unitIndex)}
+                status="Active"
+                onStart={() => router.push(`/onboarding?mode=test&unit=${unitIndex}&part=1&autostart=1`)}
+              />
             );
           })}
         </div>
-        {modalUnitIndex !== null && (() => {
-          const unitIndex = modalUnitIndex;
-          const unitCards2 = [
-            {
-              id: "unit-1",
-              title: "Unit 1",
-              subtitle: "Learn mode",
-              description: "Flexible practice. Open any part first, then move in your own order.",
-              accent: "from-brand-500 to-brand-300",
-              parts: [
-                { id: 1, title: "Part 1", hint: "Short answers" },
-                { id: 2, title: "Part 2", hint: "Describe the prompt" },
-                { id: 3, title: "Part 3", hint: "Longer discussion" },
-              ],
-            },
-            {
-              id: "unit-2",
-              title: "Unit 2",
-              subtitle: "Test mode",
-              description: "Strict practice. The order is locked and the coach is connected at test start.",
-              accent: "from-amber-500 to-orange-300",
-              parts: [
-                { id: 1, title: "Part 1", hint: "Start of test" },
-                { id: 2, title: "Part 2", hint: "Middle of test" },
-                { id: 3, title: "Part 3", hint: "Final discussion" },
-              ],
-            },
-          ];
-          const unit = unitCards2[unitIndex - 1];
-          if (!unit) return null;
-          return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center">
-              <div className="absolute inset-0 bg-black/40" onClick={closeUnitModal} />
-              <div className="relative w-full max-w-2xl rounded-2xl bg-white p-6 shadow-lg dark:bg-gray-900">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{unit.title}</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{unit.subtitle}</p>
-                  </div>
-                  <button onClick={closeUnitModal} className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">✕</button>
-                </div>
-                <div className="mt-4 space-y-3">
-                  {unit.parts.map((part) => {
-                    const partProgress = getPartProgress(unitIndex, part.id);
-                    const isPartTwo = part.id === 2;
-                    return (
-                      <div
-                        key={part.id}
-                        className={`rounded-lg border p-4 ${
-                          isPartTwo
-                            ? "border-amber-200 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10"
-                            : "border-gray-100 bg-gray-50 dark:border-gray-700 dark:bg-gray-800"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="text-sm font-semibold text-gray-900 dark:text-white">{part.title}</div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400">{part.hint}</div>
-                          </div>
-                            <button
-                              onClick={() => { handleUnitPartClick(unitIndex, part.id); closeUnitModal(); }}
-                              className={`rounded-full px-3 py-1 text-xs font-medium text-white hover:shadow-md transition ${
-                                isPartTwo ? "bg-gradient-to-r from-amber-500 to-orange-300" : "bg-gradient-to-r from-brand-500 to-brand-300"
-                              }`}
-                            >
-                              {isPartTwo ? "Open cue card" : "Open chat"}
-                            </button>
-                        </div>
-                        <div className="mt-3 flex items-center gap-3">
-                          <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-                            <div
-                              className={`h-full rounded-full bg-gradient-to-r ${isPartTwo ? "from-amber-500 to-orange-300" : "from-brand-500 to-brand-300"}`}
-                              style={{ width: `${partProgress}%` }}
-                            />
-                          </div>
-                          <div className="text-xs font-medium text-gray-600 dark:text-gray-300">{partProgress.toFixed(1)}%</div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          );
-        })()}
       </section>
     );
   }
@@ -775,26 +918,46 @@ export default function RoleOverviewPanel({
           <div className="rounded-3xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-medium text-gray-800 dark:text-white/90">Progress Over Time</p>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Track your band score by date or week.</p>
+                <p className="text-sm font-medium text-gray-800 dark:text-white/90">Units</p>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Practice speaking units — hover progress to preview parts.</p>
               </div>
               <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                IELTS Band
+                Learn & Test
               </span>
             </div>
 
-            <div className="mt-4">
-              {progressTrend.hasData ? (
-                <div className="max-w-full overflow-x-auto">
-                  <div className="min-w-[680px]">
-                    <ReactApexChart options={progressTrend.options} series={progressTrend.series} type="line" height={320} />
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              {unitCards.map((unit, idx) => {
+                const unitIndex = idx + 1;
+                const unitProgress = getUnitProgress(unitIndex);
+                return (
+                  <div key={unit.id} className="relative overflow-hidden rounded-[20px] border border-gray-100 p-4 shadow-[0_10px_30px_rgba(15,23,42,0.06)] dark:border-gray-800 dark:bg-white/[0.02]">
+                    <div className={`pointer-events-none absolute -right-6 -top-8 h-28 w-28 rounded-full blur-3xl ${unit.accent}`} />
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-gray-400">{unit.subtitle}</p>
+                        <h4 className="mt-1 text-base font-semibold text-gray-800 dark:text-white/90">{unit.title}</h4>
+                      </div>
+                      <div className="flex flex-col items-end">
+                        <span className={`rounded-full px-3 py-1 text-xs font-semibold text-white bg-gradient-to-r ${unit.accent}`}>3 Parts</span>
+                        {unitIndex === 2 ? <span className="mt-2 text-xs font-medium text-amber-600">Core focus</span> : null}
+                      </div>
+                    </div>
+
+                    <p className="mt-3 text-sm text-gray-600 dark:text-gray-300 line-clamp-2">{unit.topic}</p>
+
+                    <div className="mt-4">
+                      <div className="h-2 rounded-full bg-gray-100 dark:bg-gray-800">
+                        <div className={`h-full rounded-full bg-gradient-to-r ${unit.accent}`} style={{ width: `${unitProgress}%` }} />
+                      </div>
+                      <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+                        <span>{unitProgress.toFixed(1)}% complete</span>
+                        <button onClick={() => openUnitModal(unitIndex)} className="text-xs font-medium text-brand-600">View</button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-gray-300 px-4 py-10 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
-                  No score history yet. Start a test to generate the first band point.
-                </div>
-              )}
+                );
+              })}
             </div>
           </div>
 
@@ -912,105 +1075,107 @@ export default function RoleOverviewPanel({
       ) : null}
 
       {expectedRole === "user" ? (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-6 lg:grid-cols-2">
           {unitCards.map((unit, unitOffset) => {
             const unitIndex = unitOffset + 1;
             const unitProgress = getUnitProgress(unitIndex);
 
             return (
-            <div key={unit.id} className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">{unit.subtitle}</p>
-                  <h3 className="mt-1 text-xl font-semibold text-gray-800 dark:text-white/90">{unit.title}</h3>
-                  <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{unit.description}</p>
-                </div>
-                <span className={`rounded-full bg-gradient-to-r ${unit.accent} px-3 py-1 text-xs font-semibold text-white`}>
-                  3 Parts
-                </span>
-              </div>
-
-              <div className="mt-4 space-y-2">
-                <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                  <span>Unit progress</span>
-                  <span>{unitProgress.toFixed(1)}%</span>
-                </div>
-                <div className="h-2.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
-                  <div
-                    className={`h-full rounded-full bg-gradient-to-r ${unit.accent}`}
-                    style={{ width: `${Math.max(0, unitProgress)}%` }}
-                  />
-                </div>
-              </div>
-
-              <div className="mt-5 space-y-3">
-                {unit.parts.map((part) => {
-                  const partProgress = getPartProgress(unitIndex, part.id);
-                  return (
-                    <button
-                      key={part.id}
-                      type="button"
-                      onClick={() => handleUnitPartClick(unitIndex, part.id)}
-                      className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-left transition hover:-translate-y-[1px] hover:border-brand-300 hover:bg-brand-50 dark:border-gray-700 dark:bg-white/[0.03] dark:hover:bg-brand-500/10"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-gray-800 dark:text-white/90">{part.title}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">{part.hint}</p>
-                        </div>
-                        <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                          {partProgress >= 100 ? "Done" : "Open"}
-                        </span>
-                      </div>
-                      <div className="mt-3 flex items-center gap-3">
-                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-white dark:bg-gray-800">
-                          <div
-                            className={`h-full rounded-full bg-gradient-to-r ${unit.accent}`}
-                            style={{ width: `${partProgress}%` }}
-                          />
-                        </div>
-                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{partProgress.toFixed(1)}%</span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {unitIndex === 2 ? (
-                <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+              <div
+                key={unit.id}
+                className="rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-white/[0.03]"
+              >
+                <div className="flex items-start justify-between gap-4">
                   <div>
-                    <label className="mb-1 block text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                      Coach for test
-                    </label>
-                    <select
-                      value={selectedCoachId}
-                      onChange={(event) => setSelectedCoachId(event.target.value)}
-                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 outline-none transition focus:border-brand-300 focus:ring-2 focus:ring-brand-500/20 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                    >
-                      <option value="">Select a coach for this test</option>
-                      {coaches.map((coach) => (
-                        <option key={coach.id} value={coach.id}>
-                          {coach.email}
-                        </option>
-                      ))}
-                    </select>
+                    <p className="text-sm font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-gray-400">{unit.subtitle}</p>
+                    <h3 className="mt-1 text-lg font-semibold text-gray-800 dark:text-white/90">{unit.title}</h3>
+                    <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{unit.description}</p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleConnectCoachForTest}
-                    disabled={connectingCoach || !selectedCoachId}
-                    className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {connectingCoach ? "Connecting..." : unit.actionLabel}
-                  </button>
+                  <span className={`rounded-full bg-gradient-to-r ${unit.accent} px-3 py-1 text-xs font-semibold text-white`}>3 Parts</span>
                 </div>
-              ) : (
-                <div className="mt-5 flex items-center justify-between rounded-2xl bg-gray-50 px-4 py-3 text-sm text-gray-600 dark:bg-white/[0.03] dark:text-gray-300">
-                  <span>Practice stays private in Learn mode.</span>
-                  <span className="font-medium text-gray-800 dark:text-white/90">Free order</span>
+
+                {/* Progress bar + interactive segments */}
+                <div
+                  className="relative mt-4"
+                  onMouseEnter={() => setHoveredUnit(unitIndex)}
+                  onMouseLeave={() => {
+                    setHoveredUnit(null);
+                    setHoveredPart(null);
+                  }}
+                >
+                  <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                    <span>Overall progress</span>
+                    <span>{unitProgress.toFixed(1)}%</span>
+                  </div>
+
+                  <div className="relative mt-2 h-3 rounded-full bg-gray-100 dark:bg-gray-800">
+                    <div className={`absolute left-0 top-0 bottom-0 rounded-full bg-gradient-to-r ${unit.accent}`} style={{ width: `${unitProgress}%` }} />
+
+                    {unit.parts.map((part, idx) => {
+                      const segLeft = (idx / unit.parts.length) * 100;
+                      const segWidth = 100 / unit.parts.length;
+                      return (
+                        <div
+                          key={`seg-${unit.id}-${part.id}`}
+                          onMouseEnter={() => setHoveredPart(part.id)}
+                          onMouseLeave={() => setHoveredPart(null)}
+                          onClick={() => handleUnitPartClick(unitIndex, part.id)}
+                          className="absolute top-0 bottom-0"
+                          style={{ left: `${segLeft}%`, width: `${segWidth}%`, cursor: "pointer" }}
+                          aria-hidden
+                        />
+                      );
+                    })}
+
+                    {/* Tooltip when hovering a segment */}
+                    {hoveredPart && hoveredUnit === unitIndex && (() => {
+                      const idx = hoveredPart - 1;
+                      const segCenter = ((idx + 0.5) / unit.parts.length) * 100;
+                      const part = unit.parts[idx];
+                      const preview = part.id === 2 ? unit.journey.part2.prompt : (unit.journey[`part${part.id}` as keyof typeof unit.journey] as JourneyChatItem[])[0]?.prompt ?? "Preview";
+                      return (
+                        <div className="absolute -top-14 z-20 w-64 -translate-x-1/2 rounded-lg bg-white px-3 py-2 text-sm text-gray-700 shadow-lg ring-1 ring-gray-200 dark:bg-gray-900 dark:text-gray-200" style={{ left: `${segCenter}%` }}>
+                          <div className="font-semibold">{part.hint}</div>
+                          <div className="mt-1 text-xs text-gray-500 line-clamp-2">{preview}</div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Reveal square preview cards only on hover of the progress area */}
+                  <div className={`mt-4 grid gap-4 md:grid-cols-3 transition-all ${hoveredUnit === unitIndex ? 'opacity-100 translate-y-0' : 'pointer-events-none opacity-0 -translate-y-2'}`}>
+                    {unit.parts.map((part) => {
+                      const pid = part.id;
+                      const partProgress = getPartProgress(unitIndex, pid);
+                      const isCore = pid === 2;
+                      const preview = isCore ? unit.journey.part2.prompt : (unit.journey[`part${pid}` as keyof typeof unit.journey] as JourneyChatItem[])[0]?.prompt ?? "";
+
+                      return (
+                        <button
+                          key={`card-${unit.id}-${pid}`}
+                          type="button"
+                          onClick={() => handleUnitPartClick(unitIndex, pid)}
+                          className={`w-full h-36 text-left rounded-[20px] border p-4 transition-transform ${isCore ? 'border-amber-200 bg-amber-50 shadow-lg' : 'border-gray-200 bg-white dark:bg-gray-900'}`}
+                          aria-label={`Open part ${pid}`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="sr-only">{`Part ${pid} ${part.title}`}</div>
+                            <div className="text-sm text-gray-500">{/* minimal visual */}</div>
+                            <div className={`h-8 w-8 rounded-full ${isCore ? 'bg-amber-200' : 'bg-gray-100'}`} />
+                          </div>
+                          <p className="mt-4 text-sm text-gray-700 dark:text-gray-300 line-clamp-3">{preview}</p>
+                          <div className="mt-4 flex items-center justify-between">
+                            <div className="h-2 flex-1 mr-3 overflow-hidden rounded-full bg-white dark:bg-gray-800">
+                              <div className={`h-full rounded-full ${isCore ? 'bg-amber-500' : 'bg-gradient-to-r from-brand-500 to-brand-300'}`} style={{ width: `${partProgress}%` }} />
+                            </div>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">{partProgress.toFixed(0)}%</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              )}
-            </div>
+              </div>
             );
           })}
         </div>
