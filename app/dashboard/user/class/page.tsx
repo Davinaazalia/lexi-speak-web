@@ -23,6 +23,15 @@ interface JoinedClass {
   coach_name: string | null;
 }
 
+interface JoinRequestStatus {
+  id: string;
+  class_id: string;
+  status: "pending" | "declined" | string;
+  requested_at: string;
+  resolved_at: string | null;
+  class_name: string | null;
+}
+
 function getErrorMessage(error: unknown): string {
   if (!error) return "";
   if (typeof error === "string") return error;
@@ -39,6 +48,7 @@ function getErrorMessage(error: unknown): string {
 export default function StudentClassPage() {
   const [joinCode, setJoinCode] = useState("");
   const [joinedClasses, setJoinedClasses] = useState<JoinedClass[]>([]);
+  const [joinRequests, setJoinRequests] = useState<JoinRequestStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -47,6 +57,27 @@ export default function StudentClassPage() {
   const fetchJoinedClasses = async (studentId: string) => {
     try {
       console.log("Fetching joined classes for student:", studentId);
+
+      const { data: requestData, error: requestError } = await supabase
+        .from("class_join_requests")
+        .select("id, class_id, status, requested_at, resolved_at, classes(name)")
+        .eq("student_id", studentId)
+        .in("status", ["pending", "declined"])
+        .order("requested_at", { ascending: false });
+
+      if (requestError) {
+        console.error("Error fetching join request statuses:", requestError);
+      } else {
+        const mappedRequests = ((requestData as any[] | null) || []).map((item) => ({
+          id: item.id,
+          class_id: item.class_id,
+          status: item.status,
+          requested_at: item.requested_at,
+          resolved_at: item.resolved_at,
+          class_name: item.classes?.name ?? null,
+        }));
+        setJoinRequests(mappedRequests);
+      }
 
       const { data: membershipData, error: membershipError } = await supabase
         .from("class_members")
@@ -284,6 +315,37 @@ export default function StudentClassPage() {
           </div>
 
           <div className="space-y-4">
+            {joinRequests.length > 0 && (
+              <div className="rounded-3xl border border-amber-200 bg-amber-50 p-6 max-w-3xl mx-auto">
+                <h2 className="text-lg font-semibold text-gray-900">Join Request Status</h2>
+                <p className="mt-1 text-sm text-gray-600">Pantau persetujuan dari coach untuk request join kamu.</p>
+                <div className="mt-4 space-y-3">
+                  {joinRequests.map((request) => {
+                    const isPending = request.status === "pending";
+                    return (
+                      <div key={request.id} className="rounded-2xl border border-amber-100 bg-white p-4">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900">{request.class_name || "Unknown class"}</p>
+                            <p className="text-xs text-gray-500">Requested: {new Date(request.requested_at).toLocaleString()}</p>
+                          </div>
+                          <span
+                            className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${
+                              isPending
+                                ? "border-amber-200 bg-amber-100 text-amber-700"
+                                : "border-rose-200 bg-rose-100 text-rose-700"
+                            }`}
+                          >
+                            {isPending ? "Pending approval" : "Declined"}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {joinedClasses.length === 0 ? (
               <div className="rounded-3xl border border-dashed border-gray-400 bg-white p-10 text-center text-gray-700 max-w-3xl mx-auto">
                 <p className="text-lg font-medium">Belum bergabung dengan kelas apa pun.</p>

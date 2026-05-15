@@ -772,6 +772,7 @@ export default function Home() {
   const requestedPart = Math.min(3, Math.max(1, Number(searchParams.get("part") ?? "1") || 1));
   const autoStart = searchParams.get("autostart") === "1";
   const assignmentId = searchParams.get("assignmentId");
+  const assignmentClassId = searchParams.get("classId");
   const replayOnboarding = searchParams.get("reset") === "1" || searchParams.get("replay") === "1";
   const [activeStep, setActiveStep] = useState(0);
   const [goal, setGoal] = useState(() => {
@@ -1053,10 +1054,12 @@ Describe a topic that feels useful for your current level (${speakingLevel}) and
   useEffect(() => {
     if (!autoStart || autoStartRef.current) return;
     if (practiceMode === null && !assignmentId) return;
+    if (assignmentId && isLoadingAssignment) return;
+    if (assignmentId && !isLoadingAssignment && assignmentQuestions.length === 0) return;
 
     autoStartRef.current = true;
     setActiveStep(WIZARD_STEPS.length - 1);
-  }, [autoStart, practiceMode, assignmentId]);
+  }, [autoStart, practiceMode, assignmentId, isLoadingAssignment, assignmentQuestions.length]);
 
   useEffect(() => {
     // Reset Part 1 topic selection when part or unit changes
@@ -1660,6 +1663,16 @@ Describe a topic that feels useful for your current level (${speakingLevel}) and
   };
 
   const startSpeaking = () => {
+    if (assignmentId && isLoadingAssignment) {
+      setSpeechError("Assignment is still loading. Please wait a moment.");
+      return;
+    }
+
+    if (assignmentId && assignmentQuestions.length === 0) {
+      setSpeechError("No assignment questions available for this task.");
+      return;
+    }
+
     const chosen = speakingCards[0];
     if (!chosen) return;
     const isPart1Learn = requestedPart === 1 && practiceMode === "learn";
@@ -1720,6 +1733,60 @@ Describe a topic that feels useful for your current level (${speakingLevel}) and
       window.localStorage.setItem(ONBOARDING_COMPLETED_KEY, "1");
     }
     router.push("/dashboard/user");
+  };
+
+  const completeAssignmentSubmission = async () => {
+    if (!assignmentId) return;
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) return;
+
+    const { error } = await supabase
+      .from("assignment_submissions")
+      .upsert(
+        {
+          assignment_id: assignmentId,
+          student_id: user.id,
+          status: "submitted",
+          submitted_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "assignment_id,student_id" },
+      );
+
+    if (error) {
+      throw error;
+    }
+  };
+
+  const handleFinishSession = async () => {
+    try {
+      if (assignmentId) {
+        await completeAssignmentSubmission();
+      }
+    } catch (err) {
+      const fallbackMessage =
+        err instanceof Error && err.message
+          ? err.message
+          : "Failed to finalize assignment submission.";
+      setSpeechError(fallbackMessage);
+      return;
+    }
+
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(ONBOARDING_COMPLETED_KEY, "1");
+    }
+
+    if (assignmentClassId) {
+      router.push(`/dashboard/user/class/${assignmentClassId}`);
+      return;
+    }
+
+    goToUserDashboard();
   };
 
   useEffect(() => {
@@ -2510,7 +2577,9 @@ Describe a topic that feels useful for your current level (${speakingLevel}) and
                               <div className="flex w-full items-center justify-center gap-3">
                                 <button
                                   type="button"
-                                  onClick={goToUserDashboard}
+                                  onClick={() => {
+                                    void handleFinishSession();
+                                  }}
                                   className="w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-base font-medium text-neutral-700 border border-neutral-200 bg-white"
                                 >
                                   Finish
@@ -2520,6 +2589,7 @@ Describe a topic that feels useful for your current level (${speakingLevel}) and
                               <button
                                 type="button"
                                 onClick={startSpeaking}
+                                disabled={!!assignmentId && isLoadingAssignment}
                                 className="flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-4 text-base font-medium text-white shadow-sm transition-transform duration-200 hover:-translate-y-[1px]"
                                 style={{
                                   backgroundImage:
@@ -2538,7 +2608,11 @@ Describe a topic that feels useful for your current level (${speakingLevel}) and
                                     fill="currentColor"
                                   />
                                 </svg>
-                                {requestedPart === 2 ? "Start cue-card practice" : "Start speaking now"}
+                                {!!assignmentId && isLoadingAssignment
+                                  ? "Loading assignment..."
+                                  : requestedPart === 2
+                                  ? "Start cue-card practice"
+                                  : "Start speaking now"}
                               </button>
                             )
                           ) : !(part1IntroShown && isPart1LearnMode) ? (
